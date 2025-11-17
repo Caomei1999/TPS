@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'package:manager_interface/MAIN%20UTILS/add_parking_dialog.dart';
 import 'package:manager_interface/MAIN%20UTILS/search_bar_widget.dart';
@@ -17,27 +18,120 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String? selectedCity;
   List<String> cities = [];
-  List<Parking> parkings = [];
   List<String> filteredCities = [];
+  List<Parking> parkings = [];
 
   bool isLoading = true;
+
+  // 地图初始位置（意大利附近）
+  CameraPosition _initialCameraPosition = const CameraPosition(
+    target: LatLng(41.8719, 12.5674),
+    zoom: 5,
+  );
+
+  // 地图上的所有城市 marker
+  Set<Marker> _markers = {};
 
   @override
   void initState() {
     super.initState();
-    _loadCities();
+    _loadCitiesAndMarkers();
   }
 
-  Future<void> _loadCities() async {
-    final cityList = await ParkingService.getCities();
+  /// 一次性加载所有城市，并为每个城市生成一个 marker
+  Future<void> _loadCitiesAndMarkers() async {
+    try {
+      final cityList = await ParkingService.getCities();
+      final markers = <Marker>{};
+
+      Parking? firstParkingWithCoords;
+
+      for (final city in cityList) {
+        try {
+          final parkingList = await ParkingService.getParkingsByCity(city);
+
+          Parking? firstWithCoords;
+          for (final p in parkingList) {
+            if (p.latitude != null && p.longitude != null) {
+              firstWithCoords = p;
+              break;
+            }
+          }
+
+          if (firstWithCoords != null) {
+            final pos =
+                LatLng(firstWithCoords.latitude!, firstWithCoords.longitude!);
+
+            markers.add(
+              Marker(
+                markerId: MarkerId('city_$city'),
+                position: pos,
+                infoWindow: InfoWindow(
+                  title: city,
+                  snippet: firstWithCoords.address,
+                ),
+                // ✅ 点击 pin = 打开该城市
+                onTap: () {
+                  _openCity(city);
+                },
+              ),
+            );
+
+            firstParkingWithCoords ??= firstWithCoords;
+          }
+        } catch (e) {
+          debugPrint('Error loading parkings for city $city: $e');
+        }
+      }
+
+      setState(() {
+        cities = cityList;
+        filteredCities = cityList;
+        _markers = markers;
+        isLoading = false;
+
+        if (firstParkingWithCoords != null) {
+          _initialCameraPosition = CameraPosition(
+            target: LatLng(
+              firstParkingWithCoords.latitude!,
+              firstParkingWithCoords.longitude!,
+            ),
+            zoom: 6.5,
+          );
+        }
+      });
+    } catch (e) {
+      debugPrint('Error loading cities: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  /// 只负责获取某个城市的停车场列表
+  Future<List<Parking>> _fetchParkingsForCity(String city) async {
+    try {
+      return await ParkingService.getParkingsByCity(city);
+    } catch (e) {
+      debugPrint('Error fetching parkings for $city: $e');
+      return [];
+    }
+  }
+
+  /// 列表点击 / 地图 pin 点击都会调用这个函数
+  Future<void> _openCity(String city) async {
+    final list = await _fetchParkingsForCity(city);
+    if (!mounted) return;
+
     setState(() {
-      cities = cityList;
-      filteredCities = cityList;
-      isLoading = false;
+      selectedCity = city;
+      parkings = list;
     });
+
+    _navigateToCityScreen(city);
   }
 
-  void _navigateToCityScreen(String selectedCity) async {
+  void _navigateToCityScreen(String selectedCity) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -45,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
           city: selectedCity,
           parkings: parkings,
           onParkingTap: (Parking p1) {},
-          cities: [],
+          cities: cities,
         ),
       ),
     );
@@ -59,9 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    final results = cities
-        .where((city) => city.toLowerCase().contains(query))
-        .toList();
+    final results =
+        cities.where((city) => city.toLowerCase().contains(query)).toList();
 
     setState(() => filteredCities = results);
   }
@@ -110,17 +203,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                    'Parking "${newParking.name}" added!'),
+                                  'Parking "${newParking.name}" added!',
+                                ),
                               ),
                             );
-                            _loadCities(); // ricarica le città
+                            // 重新加载城市和 marker
+                            setState(() {
+                              isLoading = true;
+                            });
+                            await _loadCitiesAndMarkers();
                           }
                         },
                         style: TextButton.styleFrom(
                           backgroundColor: Colors.white12,
                           minimumSize: const Size(double.infinity, 60),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: const BorderSide(color: Colors.white24),
@@ -135,7 +235,24 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 30),
+
+                      // ✅ 地图卡片
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        height: 260,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(25),
+                          child: GoogleMap(
+                            initialCameraPosition: _initialCameraPosition,
+                            markers: _markers,
+                            myLocationEnabled: false,
+                            myLocationButtonEnabled: false,
+                            zoomControlsEnabled: false,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
                       Text(
                         '...Or Select a City to Manage its Parkings...',
                         style: GoogleFonts.poppins(
@@ -153,6 +270,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(height: 10),
+
+                      // 城市列表
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(20),
@@ -171,14 +290,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                   color: Colors.white12,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                      color: Colors.white24, width: 1),
+                                    color: Colors.white24,
+                                    width: 1,
+                                  ),
                                 ),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(20),
-                                  onTap: () => _navigateToCityScreen(city),
+                                  // ✅ 列表点击 = 地图 pin 点击
+                                  onTap: () => _openCity(city),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        vertical: 20),
+                                      vertical: 20,
+                                    ),
                                     child: Center(
                                       child: Text(
                                         city,

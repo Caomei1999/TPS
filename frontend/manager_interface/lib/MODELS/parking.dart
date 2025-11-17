@@ -7,6 +7,9 @@ class Parking {
   final int occupiedSpots;
   final double ratePerHour;
 
+  final double? latitude;
+  final double? longitude;
+
   Parking({
     required this.id,
     required this.name,
@@ -15,6 +18,8 @@ class Parking {
     required this.totalSpots,
     required this.occupiedSpots,
     required this.ratePerHour,
+    this.latitude,
+    this.longitude,
   });
 
   /// Safe parser for rate (handles num, string, null)
@@ -22,9 +27,16 @@ class Parking {
     if (value == null) return 0.0;
     if (value is num) return value.toDouble();
     final s = value.toString();
-    // try parse with comma or dot
     final normalized = s.replaceAll(',', '.');
     return double.tryParse(normalized) ?? 0.0;
+  }
+
+  static double? _parseNullableDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    final s = value.toString();
+    final normalized = s.replaceAll(',', '.');
+    return double.tryParse(normalized);
   }
 
   factory Parking.fromJson(Map<String, dynamic> json) {
@@ -40,6 +52,8 @@ class Parking {
           ? json['occupied_spots'] as int
           : (int.tryParse('${json['occupied_spots']}') ?? 0),
       ratePerHour: _parseRate(json['rate'] ?? json['rate_per_hour']),
+      latitude: _parseNullableDouble(json['latitude']),
+      longitude: _parseNullableDouble(json['longitude']),
     );
   }
 
@@ -49,10 +63,11 @@ class Parking {
       'name': name,
       'city': city,
       'address': address,
-      // send numeric types (not string) so backend receives numbers
       'total_spots': totalSpots,
       'occupied_spots': occupiedSpots,
       'rate': ratePerHour,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 

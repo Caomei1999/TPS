@@ -25,10 +25,10 @@ class ParkingSerializer(serializers.ModelSerializer):
             'name', 
             'city', 
             'address', 
-            'center_latitude',  
-            'center_longitude',
+            'latitude', 
+            'longitude',  
             'total_spots', 
             'available_spots',  
             'rate',
-            'entrances',        
+            'entrances',     
         ]
