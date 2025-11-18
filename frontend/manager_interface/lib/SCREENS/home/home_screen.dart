@@ -23,13 +23,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool isLoading = true;
 
-  // 地图初始位置（意大利附近）
+  // Initial map location
   CameraPosition _initialCameraPosition = const CameraPosition(
     target: LatLng(41.8719, 12.5674),
     zoom: 5,
   );
 
-  // 地图上的所有城市 marker
+  //  marker
   Set<Marker> _markers = {};
 
   @override
@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadCitiesAndMarkers();
   }
 
-  /// 一次性加载所有城市，并为每个城市生成一个 marker
+  /// Load all cities and generate a marker for each city
   Future<void> _loadCitiesAndMarkers() async {
     try {
       final cityList = await ParkingService.getCities();
@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: city,
                   snippet: firstWithCoords.address,
                 ),
-                // ✅ 点击 pin = 打开该城市
+                // Click on the mark to open the city
                 onTap: () {
                   _openCity(city);
                 },
@@ -108,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 只负责获取某个城市的停车场列表
+  /// Get a list of parking lots in a certain city
   Future<List<Parking>> _fetchParkingsForCity(String city) async {
     try {
       return await ParkingService.getParkingsByCity(city);
@@ -118,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 列表点击 / 地图 pin 点击都会调用这个函数
+
   Future<void> _openCity(String city) async {
     final list = await _fetchParkingsForCity(city);
     if (!mounted) return;
@@ -207,7 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             );
-                            // 重新加载城市和 marker
+                            // Reload city and marker
                             setState(() {
                               isLoading = true;
                             });
@@ -236,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
-                      // ✅ 地图卡片
+                      // map card
                       const SizedBox(height: 20),
                       SizedBox(
                         height: 260,
@@ -271,7 +271,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 10),
 
-                      // 城市列表
+                      // city list
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(20),
@@ -296,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(20),
-                                  // ✅ 列表点击 = 地图 pin 点击
+                                  
                                   onTap: () => _openCity(city),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
