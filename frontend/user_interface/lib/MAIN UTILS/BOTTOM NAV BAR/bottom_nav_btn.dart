@@ -27,8 +27,8 @@ class BottomNavBTN extends StatelessWidget {
       highlightColor: Colors.transparent, 
       hoverColor: Colors.transparent,
       child: Container(
-        height: AppSizes.blockSizeHorizontal * 13,
-        width: AppSizes.blockSizeHorizontal * 17,
+        height: 70,
+        width: 70,
         decoration: const BoxDecoration(
           color: Colors.transparent,
         ),
@@ -37,12 +37,12 @@ class BottomNavBTN extends StatelessWidget {
           children: [
             (currentIndex == index)
                 ? Positioned(
-                    left: AppSizes.blockSizeHorizontal * 4,
-                    bottom: AppSizes.blockSizeHorizontal * 1.5,
+                    left: 15,
+                    bottom: 3,
                     child: Icon(
                       icon,
                       color: Colors.black,
-                      size: AppSizes.blockSizeHorizontal * 8,
+                      size: 50,
                     ),
                   )
                 : Container(),
@@ -53,7 +53,7 @@ class BottomNavBTN extends StatelessWidget {
               child: Icon(
                 icon,
                 color: Colors.indigoAccent,
-                size: AppSizes.blockSizeHorizontal * 8,
+                size: 50,
               ),
             ),
           ],

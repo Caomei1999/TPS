@@ -4,6 +4,9 @@ from rest_framework.response import Response
 from .models import Parking, Spot
 from .serializers import ParkingSerializer, SpotSerializer
 
+from vehicles.models import ParkingSession
+from vehicles.serializers import ParkingSessionSerializer
+
 class ParkingViewSet(viewsets.ModelViewSet):
     serializer_class = ParkingSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -20,6 +23,14 @@ class ParkingViewSet(viewsets.ModelViewSet):
         parking = self.get_object()
         spots = parking.spots.all()
         serializer = SpotSerializer(spots, many=True)
+        return Response(serializer.data)
+
+    # NEW: Endpoint for Manager to see live sessions
+    @action(detail=True, methods=['get'])
+    def sessions(self, request, pk=None):
+        # Fetch only active sessions for this specific parking ID
+        sessions = ParkingSession.objects.filter(parking_lot_id=pk, is_active=True).order_by('-start_time')
+        serializer = ParkingSessionSerializer(sessions, many=True)
         return Response(serializer.data)
 
 

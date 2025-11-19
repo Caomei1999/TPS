@@ -4,8 +4,9 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'package:manager_interface/MAIN%20UTILS/add_parking_dialog.dart';
 import 'package:manager_interface/MAIN%20UTILS/search_bar_widget.dart';
-import 'package:manager_interface/SCREENS/city%20parkings/city_parking_screen.dart';
+import 'package:manager_interface/SCREENS/parking%20detail/parking_detail_screen.dart';
 import 'package:manager_interface/models/parking.dart';
+import 'package:manager_interface/SCREENS/home/utils/parking_card.dart'; 
 import '../../services/parking_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -16,153 +17,174 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String? selectedCity;
+  // --- State Data ---
   List<String> cities = [];
   List<String> filteredCities = [];
-  List<Parking> parkings = [];
+  
+  List<Parking> allParkings = []; 
+  List<Parking> selectedCityParkings = []; 
+  List<Parking> filteredCityParkings = []; 
 
+  String? selectedCity;
   bool isLoading = true;
+  bool isParkingsLoading = false;
 
-  // Initial map location
-  CameraPosition _initialCameraPosition = const CameraPosition(
-    target: LatLng(41.8719, 12.5674),
-    zoom: 5,
-  );
-
-  //  marker
+  // --- Map Data ---
+  GoogleMapController? _mapController;
   Set<Marker> _markers = {};
+  CameraPosition _initialCameraPosition = const CameraPosition(
+    target: LatLng(41.8719, 12.5674), // Default Italy
+    zoom: 5.5,
+  );
 
   @override
   void initState() {
     super.initState();
-    _loadCitiesAndMarkers();
+    _initDashboard();
   }
 
-  /// Load all cities and generate a marker for each city
-  Future<void> _loadCitiesAndMarkers() async {
+  // --- Data Loading ---
+  Future<void> _initDashboard() async {
+    setState(() => isLoading = true);
     try {
       final cityList = await ParkingService.getCities();
-      final markers = <Marker>{};
-
-      Parking? firstParkingWithCoords;
-
-      for (final city in cityList) {
-        try {
-          final parkingList = await ParkingService.getParkingsByCity(city);
-
-          Parking? firstWithCoords;
-          for (final p in parkingList) {
-            if (p.latitude != null && p.longitude != null) {
-              firstWithCoords = p;
-              break;
-            }
-          }
-
-          if (firstWithCoords != null) {
-            final pos =
-                LatLng(firstWithCoords.latitude!, firstWithCoords.longitude!);
-
-            markers.add(
-              Marker(
-                markerId: MarkerId('city_$city'),
-                position: pos,
-                infoWindow: InfoWindow(
-                  title: city,
-                  snippet: firstWithCoords.address,
-                ),
-                // Click on the mark to open the city
-                onTap: () {
-                  _openCity(city);
-                },
-              ),
-            );
-
-            firstParkingWithCoords ??= firstWithCoords;
-          }
-        } catch (e) {
-          debugPrint('Error loading parkings for city $city: $e');
-        }
-      }
-
+      
       setState(() {
         cities = cityList;
         filteredCities = cityList;
-        _markers = markers;
         isLoading = false;
-
-        if (firstParkingWithCoords != null) {
-          _initialCameraPosition = CameraPosition(
-            target: LatLng(
-              firstParkingWithCoords.latitude!,
-              firstParkingWithCoords.longitude!,
-            ),
-            zoom: 6.5,
-          );
-        }
       });
     } catch (e) {
-      debugPrint('Error loading cities: $e');
-      setState(() {
-        isLoading = false;
-      });
+      debugPrint("Error loading dashboard: $e");
+      setState(() => isLoading = false);
     }
   }
 
-  /// Get a list of parking lots in a certain city
-  Future<List<Parking>> _fetchParkingsForCity(String city) async {
-    try {
-      return await ParkingService.getParkingsByCity(city);
-    } catch (e) {
-      debugPrint('Error fetching parkings for $city: $e');
-      return [];
-    }
-  }
+  // --- Logic Handlers ---
 
-
-  Future<void> _openCity(String city) async {
-    final list = await _fetchParkingsForCity(city);
-    if (!mounted) return;
-
+  Future<void> _onCitySelected(String city) async {
     setState(() {
       selectedCity = city;
-      parkings = list;
+      isParkingsLoading = true;
     });
 
-    _navigateToCityScreen(city);
+    try {
+      final parkings = await ParkingService.getParkingsByCity(city);
+      
+      final newMarkers = parkings
+          .where((p) => p.latitude != null && p.longitude != null)
+          .map((p) => Marker(
+                markerId: MarkerId('p_${p.id}'),
+                position: LatLng(p.latitude!, p.longitude!),
+                infoWindow: InfoWindow(title: p.name, snippet: p.address),
+                onTap: () => _navigateToDetail(p),
+              ))
+          .toSet();
+
+      setState(() {
+        selectedCityParkings = parkings;
+        filteredCityParkings = parkings;
+        _markers = newMarkers;
+        isParkingsLoading = false;
+      });
+
+      if (parkings.isNotEmpty && parkings.first.latitude != null) {
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(parkings.first.latitude!, parkings.first.longitude!),
+            12,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => isParkingsLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error loading parkings: $e")));
+    }
   }
 
-  void _navigateToCityScreen(String selectedCity) {
-    Navigator.push(
+  void _navigateToDetail(Parking parking) async {
+    // Corrected navigation to the Detail Screen
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CityParkingScreen(
-          city: selectedCity,
-          parkings: parkings,
-          onParkingTap: (Parking p1) {},
-          cities: cities,
-        ),
+        builder: (_) => ParkingDetailScreen(parkingId: parking.id),
       ),
     );
+    
+    if (selectedCity != null) {
+      _onCitySelected(selectedCity!);
+    }
   }
 
-  void _onSearchChanged(String query) {
-    query = query.toLowerCase();
+  // --- Search Logics ---
+  
+  void _onCitySearch(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        filteredCities = cities;
+      } else {
+        filteredCities = cities
+            .where((c) => c.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
 
-    if (query.isEmpty) {
-      setState(() => filteredCities = cities);
-      return;
+  void _onParkingSearch(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        filteredCityParkings = selectedCityParkings;
+      } else {
+        filteredCityParkings = selectedCityParkings
+            .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  // --- Add Parking Handler ---
+  Future<void> _handleAddParking() async {
+    // FIXED: Removed knownCity parameter
+    final newParking = await showAddParkingDialog(
+      context,
+      existingCities: cities,
+    );
+
+    if (newParking != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Parking "${newParking.name}" added successfully!')),
+      );
+      
+      final cityList = await ParkingService.getCities();
+      setState(() {
+        cities = cityList;
+        filteredCities = cityList;
+      });
+
+      // Automatically select the new city to update the list and map
+      _onCitySelected(newParking.city);
     }
+  }
 
-    final results =
-        cities.where((city) => city.toLowerCase().contains(query)).toList();
-
-    setState(() => filteredCities = results);
+  Future<void> _deleteParking(Parking parking) async {
+    try {
+      await ParkingService.deleteParking(parking.id);
+      setState(() {
+        selectedCityParkings.removeWhere((p) => p.id == parking.id);
+        filteredCityParkings.removeWhere((p) => p.id == parking.id);
+      });
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Parking deleted'), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Delete failed: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final listToShow = filteredCities;
-
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -175,154 +197,232 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: isLoading
-                ? const CircularProgressIndicator(color: Colors.white)
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome to TPS Manager!',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontSize: 40,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      TextButton(
-                        onPressed: () async {
-                          final newParking = await showAddParkingDialog(
-                            context,
-                            existingCities: cities,
-                            knownCity: null,
-                          );
-                          if (newParking != null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Parking "${newParking.name}" added!',
-                                ),
-                              ),
-                            );
-                            // Reload city and marker
-                            setState(() {
-                              isLoading = true;
-                            });
-                            await _loadCitiesAndMarkers();
-                          }
-                        },
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.white12,
-                          minimumSize: const Size(double.infinity, 60),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(color: Colors.white24),
-                          ),
-                        ),
-                        child: Text(
-                          'Add a New Parking...',
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                      ),
+        child: Column(
+          children: [
+            // --- HEADER ---
+            _buildHeader(),
+            
+            // --- BODY COLUMNS ---
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+                child: Row(
+                  children: [
+                    // COL 1: MAPPA (50% Width -> flex 2)
+                    Expanded(
+                      flex: 2,
+                      child: _buildMapColumn(),
+                    ),
+                    const SizedBox(width: 20),
+                    
+                    // COL 2: LISTA CITTÀ (25% Width -> flex 1)
+                    Expanded(
+                      flex: 1,
+                      child: _buildCitiesColumn(),
+                    ),
+                    const SizedBox(width: 20),
 
-                      // map card
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        height: 260,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(25),
-                          child: GoogleMap(
-                            initialCameraPosition: _initialCameraPosition,
-                            markers: _markers,
-                            myLocationEnabled: false,
-                            myLocationButtonEnabled: false,
-                            zoomControlsEnabled: false,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
+                    // COL 3: LISTA PARCHEGGI (25% Width -> flex 1)
+                    Expanded(
+                      flex: 1,
+                      child: _buildParkingsColumn(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                      Text(
-                        '...Or Select a City to Manage its Parkings...',
-                        style: GoogleFonts.poppins(
-                          color: Colors.white54,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: SearchBarWidget(
-                          hintText: 'Search a City...',
-                          onChanged: _onSearchChanged,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
+  // --- WIDGET BUILDERS ---
 
-                      // city list
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.black26,
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                          child: ListView.builder(
-                            itemCount: listToShow.length,
-                            itemBuilder: (context, index) {
-                              final city = listToShow[index];
-
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white12,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: Colors.white24,
-                                    width: 1,
-                                  ),
-                                ),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(20),
-                                  
-                                  onTap: () => _openCity(city),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 20,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        city,
-                                        style: GoogleFonts.poppins(
-                                          color: Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+  Widget _buildHeader() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'TPS Dashboard',
+                  style: GoogleFonts.poppins(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
+                ),
+                Text(
+                  'Manage your infrastructure',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.white54,
+                  ),
+                ),
+              ],
+            ),
+            ElevatedButton.icon(
+              onPressed: _handleAddParking,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.greenAccent,
+                foregroundColor: const Color(0xFF020B3C),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              ),
+              icon: const Icon(Icons.add),
+              label: Text(
+                'Add Parking',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColumnContainer({required Widget child, required String title}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10, left: 5),
+          child: Text(
+            title,
+            style: GoogleFonts.poppins(
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
+              fontSize: 16
+            ),
           ),
         ),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black26,
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(25),
+              child: child,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMapColumn() {
+    return _buildColumnContainer(
+      title: 'Map Overview',
+      child: GoogleMap(
+        initialCameraPosition: _initialCameraPosition,
+        markers: _markers,
+        onMapCreated: (c) => _mapController = c,
+        zoomControlsEnabled: false,
+        myLocationButtonEnabled: false,
+        mapToolbarEnabled: false,
+      ),
+    );
+  }
+
+  Widget _buildCitiesColumn() {
+    return _buildColumnContainer(
+      title: 'Select City',
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SearchBarWidget(
+              hintText: "Find city...", 
+              onChanged: _onCitySearch
+            ),
+          ),
+          Expanded(
+            child: isLoading 
+              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  itemCount: filteredCities.length,
+                  itemBuilder: (context, index) {
+                    final city = filteredCities[index];
+                    final isSelected = city == selectedCity;
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.white : Colors.white10,
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          city,
+                          style: GoogleFonts.poppins(
+                            color: isSelected ? Colors.black : Colors.white,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                        onTap: () => _onCitySelected(city),
+                      ),
+                    );
+                  },
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParkingsColumn() {
+    return _buildColumnContainer(
+      title: selectedCity == null ? 'Parkings' : 'Parkings in $selectedCity',
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SearchBarWidget(
+              hintText: "Find parking...", 
+              onChanged: _onParkingSearch
+            ),
+          ),
+          Expanded(
+            child: selectedCity == null 
+              ? Center(
+                  child: Text(
+                    "Select a city\nto see parkings",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(color: Colors.white30),
+                  ),
+                )
+              : isParkingsLoading
+                  ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                  : filteredCityParkings.isEmpty
+                      ? Center(child: Text("No parkings found", style: GoogleFonts.poppins(color: Colors.white54)))
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          itemCount: filteredCityParkings.length,
+                          itemBuilder: (context, index) {
+                            final parking = filteredCityParkings[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              child: ParkingCard(
+                                parking: parking,
+                                onTap: () => _navigateToDetail(parking),
+                                onDelete: _deleteParking,
+                                allParkings: filteredCityParkings,
+                              ),
+                            );
+                          },
+                        ),
+          ),
+        ],
       ),
     );
   }

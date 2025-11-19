@@ -1,10 +1,27 @@
 from django.db import models
+from django.db.models.fields import DecimalField
+
+# Default JSON configuration: Fixed Hourly Rate of 2.50
+DEFAULT_TARIFF_JSON = """{
+    "type": "HOURLY_LINEAR",
+    "daily_rate": 20.00,
+    "day_base_rate": 2.50,
+    "night_base_rate": 1.50,
+    "night_start_time": "22:00",
+    "night_end_time": "06:00",
+    "flex_rules": []
+}"""
 
 class Parking(models.Model):
     name = models.CharField(max_length=100)
     city = models.CharField(max_length=50)
     address = models.CharField(max_length=150)
-    rate_per_hour = models.DecimalField(max_digits=6, decimal_places=2, default=2.5)
+    
+    # Campo per la tariffa oraria di base (mantenuto per compatibilità)
+    rate_per_hour = models.DecimalField(max_digits=6, decimal_places=2, default=2.5) 
+
+    # NUOVO CAMPO: Salva la configurazione tariffaria complessa come JSON string
+    tariff_config_json = models.TextField(default=DEFAULT_TARIFF_JSON) 
 
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
@@ -48,4 +65,3 @@ class Spot(models.Model):
 
     def __str__(self):
         return f"Spot {self.number} - {self.parking.name}"
-

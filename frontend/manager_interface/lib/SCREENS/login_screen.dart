@@ -83,6 +83,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Login Form
                 Container(
+                  width: 500,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.black26,

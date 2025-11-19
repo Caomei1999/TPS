@@ -1,3 +1,5 @@
+import 'tariff_config.dart';
+
 class Parking {
   final int id;
   final String name;
@@ -6,7 +8,7 @@ class Parking {
   final int totalSpots;
   final int occupiedSpots;
   final double ratePerHour;
-
+  final TariffConfig tariffConfig; 
   final double? latitude;
   final double? longitude;
 
@@ -18,11 +20,25 @@ class Parking {
     required this.totalSpots,
     required this.occupiedSpots,
     required this.ratePerHour,
+    required this.tariffConfig,
     this.latitude,
     this.longitude,
   });
 
-  /// Safe parser for rate (handles num, string, null)
+  // --- STATIC GETTERS AND UTILS  ---
+  
+  static TariffConfig get defaultTariffConfig {
+    return TariffConfig(
+      type: 'HOURLY_LINEAR',
+      dailyRate: 20.00,
+      dayBaseRate: 2.50,
+      nightBaseRate: 1.50,
+      nightStartTime: '22:00',
+      nightEndTime: '06:00',
+      flexRulesRaw: [],
+    );
+  }
+
   static double _parseRate(dynamic value) {
     if (value == null) return 0.0;
     if (value is num) return value.toDouble();
@@ -38,8 +54,15 @@ class Parking {
     final normalized = s.replaceAll(',', '.');
     return double.tryParse(normalized);
   }
-
+  
+  // --- FACTORY CONSTRUCTOR ---
+  
   factory Parking.fromJson(Map<String, dynamic> json) {
+    final dynamic rawTariffJson = json['tariff_config_json'];
+    final TariffConfig config = (rawTariffJson is String && rawTariffJson.isNotEmpty)
+        ? TariffConfig.fromJson(rawTariffJson)
+        : Parking.defaultTariffConfig;
+
     return Parking(
       id: json['id'] as int,
       name: json['name'] ?? '',
@@ -52,10 +75,13 @@ class Parking {
           ? json['occupied_spots'] as int
           : (int.tryParse('${json['occupied_spots']}') ?? 0),
       ratePerHour: _parseRate(json['rate'] ?? json['rate_per_hour']),
+      tariffConfig: config, // Use the safely derived config object
       latitude: _parseNullableDouble(json['latitude']),
       longitude: _parseNullableDouble(json['longitude']),
     );
   }
+
+  // --- SERIALIZATION TO JSON ---
 
   Map<String, dynamic> toJson() {
     return {
@@ -68,8 +94,11 @@ class Parking {
       'rate': ratePerHour,
       'latitude': latitude,
       'longitude': longitude,
+      'tariff_config_json': tariffConfig.toJson(), 
     };
   }
 
+  // --- DERIVED PROPERTIES ---
+  
   int get availableSpots => totalSpots - occupiedSpots;
 }
