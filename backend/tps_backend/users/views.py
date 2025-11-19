@@ -5,6 +5,31 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserRegisterSerializer
 from rest_framework.permissions import IsAuthenticated
 
+# JWT IMPORTS SPECIFICI
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+# Custom Serializer che aggiunge il ruolo al payload della risposta JWT
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Aggiunge il ruolo al token JWT
+        token['role'] = user.role 
+        return token
+
+    def validate(self, attrs):
+        # Chiama la validazione standard (autenticazione)
+        data = super().validate(attrs)
+        
+        # Aggiunge il ruolo direttamente al payload della risposta JSON
+        data['role'] = self.user.role 
+        
+        return data
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
+
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
@@ -13,6 +38,7 @@ def get_tokens_for_user(user):
     }
 
 class RegisterUserView(APIView):
+    # ... (Il resto della vista register rimane invariato)
     permission_classes = () 
     authentication_classes = ()
 
@@ -43,9 +69,6 @@ class ProfileView(APIView):
             'email': user.email,
             'first_name': user.first_name,
             'last_name': user.last_name,
-            'full_name': user.get_full_name(), 
+            'role': user.role, # Assicurati di restituire il ruolo qui
         }
-        
-        return Response(data, status=status.HTTP_200_OK)
-    
-profile_view = ProfileView.as_view()
+        return Response(data)

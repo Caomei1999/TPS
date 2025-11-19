@@ -1,21 +1,46 @@
 import 'package:flutter/material.dart';
-import 'package:officer_interface/SCREENS/login_screen.dart';
+import 'package:flutter/services.dart';
+import 'package:officer_interface/SCREENS/login_screen.dart'; 
+import 'package:officer_interface/SCREENS/home_screen.dart';
+import 'package:officer_interface/services/authentication%20helpers/secure_storage_service.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
-  runApp(OfficerApp());
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
+
+  // Check if controller is already logged in
+  final secureStorage = SecureStorageService();
+  final token = await secureStorage.getAccessToken();
+  final bool isLoggedIn = token != null;
+
+  runApp(MyApp(isLoggedIn: isLoggedIn));
 }
 
-class OfficerApp extends StatelessWidget {
+class MyApp extends StatelessWidget {
+  final bool isLoggedIn;
+
+  const MyApp({super.key, required this.isLoggedIn});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Controller Interface',
+      title: 'Parking Controller',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromARGB(255, 52, 12, 108),
+          brightness: Brightness.dark,
+        ),
+        scaffoldBackgroundColor: const Color.fromARGB(255, 2, 11, 60),
       ),
-      home: LoginScreen(),
+      home: isLoggedIn ? const HomeScreen() : const LoginScreen(),
     );
   }
 }

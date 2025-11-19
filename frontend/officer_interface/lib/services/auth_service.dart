@@ -1,16 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:officer_interface/services/authentication%20helpers/secure_storage_service.dart';
-
-
+// Since this file is used by both officer and manager interfaces, 
+// we must ensure the import path to secure_storage_service.dart is correct 
+import 'package:officer_interface/services/authentication%20helpers/secure_storage_service.dart'; 
 
 class AuthService {
-  static const String baseUrl = "http://127.0.0.1:8000/api/users"; 
+  // Assumed correct URL from tps_backend/urls.py (api/users/)
+  static const String baseUrl = "http://127.0.0.1:8000/api/users";
   static final SecureStorageService _storageService = SecureStorageService();
 
-  // Login specific for controller
-  static Future<bool> loginController(String email, String password) async {
-    final url = Uri.parse('$baseUrl/auth/token/');
+  // Unified login method for Manager or Controller
+  static Future<bool> loginUser(String email, String password, {String requiredRole = 'any'}) async {
+    // FIXED: Use standard JWT token endpoint
+    final url = Uri.parse('$baseUrl/token/');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -20,27 +22,41 @@ class AuthService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
 
-      // Optional: check role via backend (if backend returns user info)
       final accessToken = data['access'];
       final refreshToken = data['refresh'];
 
-      // Save tokens securely
+      // 1. Save tokens securely
       await _storageService.saveTokens(
         accessToken: accessToken,
         refreshToken: refreshToken,
       );
-
-      // If backend returns role, validate manager
-      if (data.containsKey('role') && data['role'] == 'controller') {
-        return true;
+      
+      // 2. Role validation (Requires backend to return the role in token response)
+      if (data.containsKey('role')) {
+        final userRole = data['role'];
+        if (requiredRole == 'any' || userRole == requiredRole) {
+          return true;
+        }
+        // Role mismatch: log out and fail
+        await logout();
+        return false;
       }
 
-      // If backend doesn't return role, assume all JWT users are allowed
-      return true;
+      // If backend doesn't return role, assume success if no specific role is required
+      return requiredRole == 'any';
     } else {
+      // Login failed (401 or other HTTP error)
       return false;
     }
   }
+
+  // Convenience methods (calling the unified method)
+  static Future<bool> loginManager(String email, String password) => 
+      loginUser(email, password, requiredRole: 'manager');
+  
+  static Future<bool> loginController(String email, String password) => 
+      loginUser(email, password, requiredRole: 'controller');
+
 
   // Logout
   static Future<void> logout() async {
