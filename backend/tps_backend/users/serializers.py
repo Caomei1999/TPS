@@ -26,7 +26,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     It ensures password validation and hashing.
     """
     password = serializers.CharField(write_only=True, required=True)
-    password2 = serializers.CharField(write_only=True, required=True)
+    
     
     class Meta:
         model = CustomUser
@@ -35,17 +35,15 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             'first_name', 
             'last_name', 
             'password', 
-            'password2'
         )
         extra_kwargs = {'first_name': {'required': True}, 'last_name': {'required': True}}
 
     def validate(self, data):
-        # 1. Check if passwords match
-        if data['password'] != data['password2']:
-            raise serializers.ValidationError({"password": "Passwords do not match."})
+        # RIMOSSO: Controllo password match (non serve più)
         
-        # 2. Check password strength
+        # Check password strength
         try:
+            # Passiamo un'istanza temporanea user per validazioni che dipendono dai dati utente (es. non contenere il nome)
             validate_password(data['password'], user=CustomUser(**data))
         except exceptions.ValidationError as e:
             raise serializers.ValidationError({"password": list(e.messages)})
@@ -53,13 +51,9 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        # Remove confirmation password
-        validated_data.pop('password2') 
-        
-        # Default role for standard registration is 'user'
+
         validated_data['role'] = 'user'
-        
-        # Use custom manager's create_user method to handle password hashing
+
         user = CustomUser.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],

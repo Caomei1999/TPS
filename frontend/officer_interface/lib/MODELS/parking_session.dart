@@ -8,8 +8,11 @@ class ParkingSession {
   final DateTime startTime;
   final bool isActive;
   final double? totalCost;
+  
+  // NUOVO CAMPO
+  final DateTime? plannedEndTime; 
 
-  // Convenience getters for display (Controller App)
+  // Convenience getters
   String get vehiclePlate => vehicle.plate;
   String get vehicleName => vehicle.name;
 
@@ -20,10 +23,10 @@ class ParkingSession {
     required this.startTime,
     required this.isActive,
     this.totalCost,
+    this.plannedEndTime, // Aggiunto al costruttore
   });
 
   factory ParkingSession.fromJson(Map<String, dynamic> json) {
-    // Deserialize nested objects using the lighter models
     final vehicleData = json['vehicle'] ?? {};
     final parkingLotData = json['parking_lot'] ?? {};
 
@@ -40,6 +43,11 @@ class ParkingSession {
       startTime: DateTime.parse(json['start_time']),
       isActive: json['is_active'] ?? false,
       totalCost: parseCost(json['total_cost']),
+      
+      // Parsing della data di fine (se presente)
+      plannedEndTime: json['planned_end_time'] != null 
+          ? DateTime.parse(json['planned_end_time']) 
+          : null,
     );
   }
 }

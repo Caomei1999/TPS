@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
       firstName: _nameController.text.trim(),
       lastName: _surnameController.text.trim(),
       email: _emailController.text.trim(),
-      password: _passwordController.text,
+      password: _passwordController.text.trim(),
     );
 
     setState(() {

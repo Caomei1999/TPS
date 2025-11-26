@@ -207,28 +207,38 @@ class _HomeScreenState extends State<HomeScreen> {
   
   Widget _buildActiveSessionCard(ParkingSession session) {
     final startTime = session.startTime.toLocal();
-    final duration = DateTime.now().difference(startTime);
+    // Recupera l'orario di fine dal nuovo campo del modello
+    final endTime = session.plannedEndTime?.toLocal();
+
+    final now = DateTime.now();
+    final duration = now.difference(startTime);
+    
     final formatter = DateFormat('MMM d, yyyy HH:mm');
+    final timeFormatter = DateFormat('HH:mm'); // Formato solo ora
+    
     final durationHours = duration.inHours;
     final durationMinutes = duration.inMinutes % 60;
     
-    final cost = session.totalCost != null 
-        ? NumberFormat.currency(locale: 'it_IT', symbol: '€').format(session.totalCost) 
-        : 'N/A';
+    // Controllo visivo se è scaduta
+    final bool isExpired = endTime != null && now.isAfter(endTime);
     
     return Container(
       padding: const EdgeInsets.all(30),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.green.shade800.withOpacity(0.3),
+            // Se scaduta diventa rossiccia, altrimenti verde
+            isExpired ? Colors.red.shade900.withOpacity(0.5) : Colors.green.shade800.withOpacity(0.3),
             const Color.fromARGB(255, 2, 11, 60).withOpacity(0.5),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.greenAccent, width: 2),
+        border: Border.all(
+            color: isExpired ? Colors.redAccent : Colors.greenAccent, 
+            width: 2
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,15 +247,22 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "ACTIVE SESSION",
-                style: GoogleFonts.poppins(color: Colors.greenAccent, fontSize: 24, fontWeight: FontWeight.bold),
+                isExpired ? "EXPIRED" : "ACTIVE SESSION",
+                style: GoogleFonts.poppins(
+                    color: isExpired ? Colors.redAccent : Colors.greenAccent, 
+                    fontSize: 24, 
+                    fontWeight: FontWeight.bold
+                ),
               ),
-              const Icon(Icons.check_circle, color: Colors.greenAccent, size: 30),
+              Icon(
+                  isExpired ? Icons.warning_amber_rounded : Icons.check_circle, 
+                  color: isExpired ? Colors.redAccent : Colors.greenAccent, 
+                  size: 30
+              ),
             ],
           ),
           const Divider(color: Colors.white38, height: 30),
           
-          // FIXED: Show only Plate, not Name
           _buildInfoRow("License Plate", session.vehiclePlate), 
           _buildInfoRow("Parking Lot", session.parkingLot?.name ?? "Unknown Parking"),
           _buildInfoRow("Parking Address", session.parkingLot?.address ?? "N/A"),
@@ -253,20 +270,21 @@ class _HomeScreenState extends State<HomeScreen> {
           
           const Divider(color: Colors.white38, height: 30),
 
-          // Duration and Cost
           _buildInfoRow(
             "Start Time", 
             formatter.format(startTime), 
             isHighlight: true
           ),
           _buildInfoRow(
-            "Duration", 
+            "Active Duration", 
             "${durationHours}h ${durationMinutes}m",
             isHighlight: true
           ),
+          
+          // --- NUOVA RIGA AGGIUNTA ---
           _buildInfoRow(
-            "Estimated Cost (Base Rate)", 
-            cost, 
+            "Expires at", 
+            endTime != null ? formatter.format(endTime) : "Unlimited",
             isHighlight: true
           ),
         ],
