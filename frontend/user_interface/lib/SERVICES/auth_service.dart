@@ -27,8 +27,12 @@ class AuthService {
 
       if (response.statusCode == 201) {
         return json.decode(response.body);
-      } else{return null;}
-    } catch(e) {return null;}
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>?> login({
@@ -41,14 +45,57 @@ class AuthService {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'email': email,
-          'password': password,
-        }),
+        body: json.encode({'email': email, 'password': password}),
       );
       if (response.statusCode == 200) {
         return json.decode(response.body);
-      } else {return null;}
-    } catch(e) {return null;}
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<bool> requestPasswordReset({required String email}) async {
+    final url = Uri.parse('$_baseUrl/password-reset-request/');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email}),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> confirmPasswordReset({
+    required String email,
+    required String code,
+    required String newPassword,
+    required String newPasswordConfirm,
+  }) async {
+    final url = Uri.parse('$_baseUrl/password-reset-confirm/');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'token': code,
+          'new_password': newPassword,
+          'new_password_confirm': newPasswordConfirm,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
   }
 }

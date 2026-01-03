@@ -65,4 +65,22 @@ class UserService {
       return false;
     }
   }
+
+  Future<bool> updateProfile({
+    required String firstName,
+    required String lastName,
+  }) async {
+    final url = Uri.parse('$_baseUrl/profile/');
+
+    try {
+      final response = await _httpClient.patch(
+        url,
+        body: {'first_name': firstName, 'last_name': lastName},
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
 }

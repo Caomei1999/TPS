@@ -1,18 +1,15 @@
-import 'dart:async'; // Necessario per il Timer
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:manager_interface/models/parking.dart';
 import 'package:manager_interface/SCREENS/live%20monitor%20screen/live_monitor_screen.dart';
-
-// Import Models & Services
 import 'package:manager_interface/SCREENS/parking%20detail/utils/cost_simulator/active_rules_card.dart';
 import 'package:manager_interface/SCREENS/parking%20detail/utils/cost_simulator/cost_chart.dart';
 import 'package:manager_interface/SCREENS/parking%20detail/utils/live_stats/live_stats_widgets.dart';
 import 'package:manager_interface/SCREENS/parking%20detail/utils/parking_cost_calculator.dart';
 import 'package:manager_interface/SCREENS/parking%20detail/utils/tariff_management/spot_stat_widgets.dart';
 import 'package:manager_interface/SCREENS/parking%20detail/utils/tariff_management/tariff_selection_card.dart';
-
 import 'package:manager_interface/models/spot.dart';
 import 'package:manager_interface/models/tariff_config.dart';
 import 'package:manager_interface/services/parking_service.dart';
@@ -30,8 +27,7 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
   Parking? parking;
   List<Spot> spots = [];
   bool isLoading = true;
-  
-  // 🚨 TIMER PER AGGIORNAMENTO LIVE
+
   Timer? _liveUpdateTimer;
 
   String _selectedRateType = 'HOURLY_LINEAR';
@@ -41,6 +37,8 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
   TimeOfDay _nightStartTime = const TimeOfDay(hour: 22, minute: 0);
   TimeOfDay _nightEndTime = const TimeOfDay(hour: 6, minute: 0);
   List<FlexRule> _flexRules = [];
+
+  TimeOfDay _simulationStartTime = const TimeOfDay(hour: 8, minute: 0);
 
   List<FlSpot> _chartData = [];
 
@@ -52,8 +50,7 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
   void initState() {
     super.initState();
     _loadDashboardData();
-    
-    // 🚨 AVVIA IL TIMER: Aggiorna ogni 5 secondi
+
     _liveUpdateTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _silentlyUpdateData();
     });
@@ -61,7 +58,6 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
 
   @override
   void dispose() {
-    // 🚨 IMPORTANTE: Ferma il timer quando esci dalla pagina
     _liveUpdateTimer?.cancel();
     _dailyRateController.dispose();
     _dayRateController.dispose();
@@ -69,20 +65,16 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
     super.dispose();
   }
 
-  // Caricamento Iniziale (Mostra Spinner)
   Future<void> _loadDashboardData() async {
     setState(() => isLoading = true);
     try {
       final fetchedParking = await ParkingService.getParking(widget.parkingId);
-      
-      // 🚨 FIX CRUCIALE: Assegnazione alla variabile di stato
+
       parking = fetchedParking;
-      
       spots = await ParkingService.getSpots(widget.parkingId);
 
-      // Usa il getter tariffConfig per inizializzare
-      _initializeTariffState(parking!.tariffConfig); 
-      
+      _initializeTariffState(parking!.tariffConfig);
+
       _simulateCostProjection();
       _calculateProjectedRevenue();
 
@@ -99,23 +91,20 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
       }
     }
   }
-  
-  // 🚨 AGGIORNAMENTO SILENZIOSO (Niente Spinner, Solo Aggiornamento Dati)
+
   Future<void> _silentlyUpdateData() async {
     if (!mounted) return;
     try {
-        // Scarica i dati aggiornati (inclusi occupiedSpots, todayRevenue, todayEntries)
-        final updatedParking = await ParkingService.getParking(widget.parkingId);
+      final updatedParking = await ParkingService.getParking(widget.parkingId);
 
-        if (mounted) {
-            setState(() {
-                parking = updatedParking;
-                // Aggiorna le statistiche visuali con i nuovi dati
-                _calculateProjectedRevenue();
-            });
-        }
+      if (mounted) {
+        setState(() {
+          parking = updatedParking;
+          _calculateProjectedRevenue();
+        });
+      }
     } catch (e) {
-        print("Live update error: $e"); 
+      print("Live update error: $e");
     }
   }
 
@@ -165,7 +154,6 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
   void _onTariffDataChanged() {
     setState(() {
       _simulateCostProjection();
-      // Nota: Non ricalcoliamo le revenue qui perché quelle dipendono dai dati reali del DB
     });
   }
 
@@ -175,30 +163,29 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
     final config = _getCurrentTariffConfig();
     final String configJsonString = config.toJson();
 
-    // Ricostruisci l'oggetto Parking preservando i dati attuali
     final updatedParking = Parking(
       id: parking!.id,
       name: parking!.name,
       city: parking!.city,
       address: parking!.address,
       totalSpots: parking!.totalSpots,
-      occupiedSpots: parking!.occupiedSpots, 
-      todayEntries: parking!.todayEntries, // Mantiene i dati statistici
-      todayRevenue: parking!.todayRevenue, // Mantiene i dati statistici
-      tariffConfigJson: configJsonString, 
+      occupiedSpots: parking!.occupiedSpots,
+      todayEntries: parking!.todayEntries,
+      todayRevenue: parking!.todayRevenue,
+      tariffConfigJson: configJsonString,
       latitude: parking!.latitude,
       longitude: parking!.longitude,
     );
 
     try {
       await ParkingService.saveParking(updatedParking);
-      
+
       setState(() {
-          parking = updatedParking;
+        parking = updatedParking;
       });
-      
+
       _simulateCostProjection();
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Tariff and Rules updated successfully'),
@@ -219,14 +206,14 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
     try {
       final newSpot = await ParkingService.addSpot(parking!.id);
       final newSpotsList = List<Spot>.from(spots)..add(newSpot);
-      
+
       final newParking = Parking(
         id: parking!.id,
         name: parking!.name,
         city: parking!.city,
         address: parking!.address,
-        totalSpots: parking!.totalSpots + 1, 
-        occupiedSpots: parking!.occupiedSpots, 
+        totalSpots: parking!.totalSpots + 1,
+        occupiedSpots: parking!.occupiedSpots,
         todayEntries: parking!.todayEntries,
         todayRevenue: parking!.todayRevenue,
         tariffConfigJson: parking!.tariffConfigJson,
@@ -238,10 +225,15 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
         spots = newSpotsList;
         parking = newParking;
       });
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Spot added.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Spot added.')));
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add spot: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Failed to add spot: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -250,7 +242,10 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
     try {
       final success = await ParkingService.deleteSpot(spotId);
       if (success) {
-        final spotToRemove = spots.firstWhere((s) => s.id == spotId, orElse: () => spots.last);
+        final spotToRemove = spots.firstWhere(
+          (s) => s.id == spotId,
+          orElse: () => spots.last,
+        );
         final newSpotsList = spots.where((s) => s.id != spotId).toList();
 
         final newParking = Parking(
@@ -259,7 +254,8 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
           city: parking!.city,
           address: parking!.address,
           totalSpots: parking!.totalSpots - 1,
-          occupiedSpots: parking!.occupiedSpots - (spotToRemove.isOccupied ? 1 : 0), 
+          occupiedSpots:
+              parking!.occupiedSpots - (spotToRemove.isOccupied ? 1 : 0),
           todayEntries: parking!.todayEntries,
           todayRevenue: parking!.todayRevenue,
           tariffConfigJson: parking!.tariffConfigJson,
@@ -271,11 +267,16 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
           spots = newSpotsList;
           parking = newParking;
         });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Spot deleted.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Spot deleted.')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete spot: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Failed to delete spot: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -298,11 +299,21 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
     if (!mounted) return;
 
     final config = _getCurrentTariffConfig();
-    final calculator = CostCalculator(config); 
+    final calculator = CostCalculator(config);
     final List<FlSpot> newChartData = [];
 
     for (int hours = 0; hours <= 24; hours += 1) {
-      double cost = calculator.calculateCostForHours(hours.toDouble());
+      double cost;
+
+      if (hours == 0 && config.type == 'FIXED_DAILY') {
+        cost = config.dailyRate;
+      } else {
+        cost = calculator.calculateCostForHours(
+          hours.toDouble(),
+          startTime: _simulationStartTime,
+        );
+      }
+
       newChartData.add(FlSpot(hours.toDouble(), cost));
     }
 
@@ -313,11 +324,9 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
 
   void _calculateProjectedRevenue() {
     if (parking == null) return;
-    
-    // 🚨 USA I DATI REALI DAL BACKEND (Aggiornati dal Timer)
     setState(() {
-        projectedRevenue = parking!.todayRevenue;
-        dailyEntries = parking!.todayEntries.toDouble();
+      projectedRevenue = parking!.todayRevenue;
+      dailyEntries = parking!.todayEntries.toDouble();
     });
   }
 
@@ -344,7 +353,7 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
   Widget build(BuildContext context) {
     if (isLoading || parking == null) {
       return const Scaffold(
-        backgroundColor: Color(0xFF020B3C), // Sfondo scuro per evitare flash bianco
+        backgroundColor: Color(0xFF020B3C),
         body: Center(child: CircularProgressIndicator(color: Colors.white)),
       );
     }
@@ -355,7 +364,7 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
     final double occupancyPercentage = totalSpots > 0
         ? (occupiedSpots / totalSpots) * 100
         : 0.0;
-    
+
     final config = _getCurrentTariffConfig();
 
     return Scaffold(
@@ -405,7 +414,6 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // COLUMN 1: Tariff Management
             Expanded(
               flex: 1,
               child: SingleChildScrollView(
@@ -432,6 +440,13 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
                         nightStartTime: _nightStartTime,
                         nightEndTime: _nightEndTime,
                         flexRules: _flexRules,
+                        simulationStartTime: _simulationStartTime,
+                        onSimulationTimeChanged: (newTime) {
+                          setState(() {
+                            _simulationStartTime = newTime;
+                          });
+                          _simulateCostProjection();
+                        },
                         onDataChanged: _onTariffDataChanged,
                         onSelectType: (type) => setState(() {
                           _selectedRateType = type;
@@ -495,7 +510,6 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
 
             const SizedBox(width: 20),
 
-            // COLUMN 2: Cost Simulator
             Expanded(
               flex: 2,
               child: SingleChildScrollView(
@@ -514,7 +528,11 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
 
                     _buildCard(
                       title: 'Cost Projection (24h)',
-                      child: CostChart(chartData: _chartData),
+                      child: CostChart(
+                        chartData: _chartData,
+                        startTime: _simulationStartTime,
+                        rateType: _selectedRateType,
+                      ),
                     ),
                     const SizedBox(height: 20),
 
@@ -529,7 +547,6 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
 
             const SizedBox(width: 20),
 
-            // COLUMN 3: Live Stats
             Expanded(
               flex: 1,
               child: SingleChildScrollView(

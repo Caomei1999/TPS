@@ -2,12 +2,9 @@ from rest_framework import serializers
 from .models import CustomUser
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions
+from django.contrib.auth.tokens import default_token_generator
 
 class UserSerializer(serializers.ModelSerializer):
-    """
-    Serializer used to represent the user's data (e.g., in profile views).
-    Excludes password.
-    """
     class Meta:
         model = CustomUser
         fields = (
@@ -21,10 +18,6 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'email', 'role', 'date_joined')
 
 class UserRegisterSerializer(serializers.ModelSerializer):
-    """
-    Serializer used for user registration (POST requests).
-    It ensures password validation and hashing.
-    """
     password = serializers.CharField(write_only=True, required=True)
     password2 = serializers.CharField(write_only=True, required=True)
     
@@ -40,11 +33,9 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {'first_name': {'required': True}, 'last_name': {'required': True}}
 
     def validate(self, data):
-        # 1. Check if passwords match
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": "Passwords do not match."})
         
-        # 2. Check password strength
         try:
             validate_password(data['password'], user=CustomUser(**data))
         except exceptions.ValidationError as e:
@@ -53,13 +44,9 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        # Remove confirmation password
         validated_data.pop('password2') 
-        
-        # Default role for standard registration is 'user'
         validated_data['role'] = 'user'
         
-        # Use custom manager's create_user method to handle password hashing
         user = CustomUser.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
@@ -71,9 +58,6 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    """
-    Serializer for password change endpoint.
-    """
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
 
@@ -83,3 +67,48 @@ class ChangePasswordSerializer(serializers.Serializer):
         except exceptions.ValidationError as e:
             raise serializers.ValidationError(list(e.messages))
         return value
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+    class Meta:
+        fields = ('email',)
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    token = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+    new_password_confirm = serializers.CharField(required=True)
+
+    def validate(self, data):
+        email = data.get('email')
+        token = data.get('token')
+        password = data.get('new_password')
+        password_confirm = data.get('new_password_confirm')
+
+        if password != password_confirm:
+            raise serializers.ValidationError({"new_password": "Passwords do not match."})
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError({"email": "User with this email does not exist."})
+
+        if not default_token_generator.check_token(user, token):
+            raise serializers.ValidationError({"token": "Invalid or expired token."})
+
+        try:
+            validate_password(password, user=user)
+        except exceptions.ValidationError as e:
+            raise serializers.ValidationError({"new_password": list(e.messages)})
+
+        data['user'] = user
+        return data
+
+    def save(self):
+        user = self.validated_data['user']
+        new_password = self.validated_data['new_password']
+        
+        user.set_password(new_password)
+        user.save()
+        return user

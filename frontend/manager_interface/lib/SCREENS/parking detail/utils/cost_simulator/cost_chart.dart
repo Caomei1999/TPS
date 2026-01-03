@@ -5,23 +5,37 @@ import 'package:intl/intl.dart';
 
 class CostChart extends StatelessWidget {
   final List<FlSpot> chartData;
+  final TimeOfDay startTime;
+  final String rateType;
 
-  const CostChart({super.key, required this.chartData});
+  const CostChart({
+    super.key,
+    required this.chartData,
+    required this.startTime,
+    required this.rateType,
+  });
 
   Widget _buildSummaryBox(String label, int hours) {
-    if (chartData.isEmpty || hours > chartData.last.x.toInt()) return const SizedBox.shrink();
-    
-    final costSpot = chartData.firstWhere((s) => s.x.toInt() == hours, orElse: () => FlSpot(hours.toDouble(), 0.0));
-    final cost = costSpot.y;
-    
-    final currencyFormatter = NumberFormat.currency(locale: 'it_IT', symbol: '€');
+    if (chartData.isEmpty || hours > chartData.last.x.toInt())
+      return const SizedBox.shrink();
 
-    return Container( 
+    final costSpot = chartData.firstWhere(
+      (s) => s.x.toInt() == hours,
+      orElse: () => chartData.isNotEmpty ? chartData.first : const FlSpot(0, 0),
+    );
+    final cost = costSpot.y;
+
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'it_IT',
+      symbol: '€',
+    );
+
+    return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 30, 10, 100).withOpacity(0.5), 
+        color: const Color.fromARGB(255, 30, 10, 100).withOpacity(0.5),
         borderRadius: BorderRadius.circular(10),
-        border: BoxBorder.all(color: Colors.white24),
+        border: Border.all(color: Colors.white24),
       ),
       child: Column(
         children: [
@@ -32,7 +46,11 @@ class CostChart extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             currencyFormatter.format(cost),
-            style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -45,30 +63,45 @@ class CostChart extends StatelessWidget {
     double maxY = 0;
 
     if (chartData.isNotEmpty) {
-      final List<double> yValues = chartData
-          .where((spot) => spot.x > 0)
-          .map((spot) => spot.y)
-          .toList();
-      
+      final List<double> yValues = chartData.map((spot) => spot.y).toList();
+
       if (yValues.isNotEmpty) {
-        minY = (yValues.reduce((a, b) => a < b ? a : b) - 5).clamp(0.0, double.infinity);
+        minY = (yValues.reduce((a, b) => a < b ? a : b) - 5).clamp(
+          0.0,
+          double.infinity,
+        );
+        maxY = yValues.reduce((a, b) => a > b ? a : b) + 10;
       }
-      
-      maxY = yValues.reduce((a, b) => a > b ? a : b) + 10;
-    }
-    
-    if (maxY == 0) {
-        maxY = 50; 
     }
 
+    if (maxY == 0) maxY = 50;
+
     const Color gridColor = Colors.white38;
-    const Color gradientStartColor = Color.fromARGB(255, 120, 70, 255); 
-    const Color gradientEndColor = Color.fromARGB(255, 30, 10, 100); 
+    const Color gradientStartColor = Color.fromARGB(255, 120, 70, 255);
+    const Color gradientEndColor = Color.fromARGB(255, 30, 10, 100);
+
+    final bool isFixedRate = rateType == 'FIXED_DAILY';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Cost Projection (24h)', style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Cost Projection (24h)',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              'Entry: ${startTime.format(context)}',
+              style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12),
+            ),
+          ],
+        ),
         const Divider(color: Colors.white12, height: 20),
         const SizedBox(height: 20),
         SizedBox(
@@ -77,16 +110,15 @@ class CostChart extends StatelessWidget {
             LineChartData(
               minY: minY,
               maxY: maxY,
-              
               gridData: const FlGridData(show: false),
-              
+
               extraLinesData: ExtraLinesData(
                 horizontalLines: [
                   HorizontalLine(
                     y: (maxY / 5).ceilToDouble() * 1,
                     color: gridColor.withOpacity(0.3),
                     strokeWidth: 1,
-                    dashArray: [8, 4], 
+                    dashArray: [8, 4],
                   ),
                   HorizontalLine(
                     y: (maxY / 5).ceilToDouble() * 2,
@@ -106,31 +138,39 @@ class CostChart extends StatelessWidget {
                     strokeWidth: 1,
                     dashArray: [8, 4],
                   ),
-                  HorizontalLine(
-                    y: (maxY / 5).ceilToDouble() * 4.99,
-                    color: gridColor.withOpacity(0.3),
-                    strokeWidth: 1,
-                    dashArray: [8, 4],
-                  ),
-                ].where((line) => line.y < maxY).toList(), 
+                ].where((line) => line.y < maxY).toList(),
               ),
 
               lineTouchData: LineTouchData(
                 enabled: true,
-
                 touchTooltipData: LineTouchTooltipData(
                   tooltipRoundedRadius: 12,
                   tooltipPadding: const EdgeInsets.all(10),
                   tooltipMargin: 8,
                   getTooltipItems: (touchedSpots) {
-                    final formatter = NumberFormat.currency(locale: 'it_IT', symbol: '€');
+                    final formatter = NumberFormat.currency(
+                      locale: 'it_IT',
+                      symbol: '€',
+                    );
 
                     return touchedSpots.map((spot) {
-                      final hours = spot.x.toInt();
+                      final hoursPassed = spot.x.toInt();
                       final price = formatter.format(spot.y);
 
+                      // Tooltip 逻辑也需要确保正确显示分钟
+                      final int totalStartMinutes =
+                          startTime.hour * 60 + startTime.minute;
+                      final int totalCurrentMinutes =
+                          (totalStartMinutes + (hoursPassed * 60)) % 1440;
+
+                      final int displayHour = totalCurrentMinutes ~/ 60;
+                      final int displayMinute = totalCurrentMinutes % 60;
+
+                      final String timeString =
+                          '${displayHour.toString().padLeft(2, '0')}:${displayMinute.toString().padLeft(2, '0')}';
+
                       return LineTooltipItem(
-                        'Duration: $hours h\nCost: $price',
+                        'Time: $timeString\nDuration: ${hoursPassed}h\nCost: $price',
                         const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -143,79 +183,117 @@ class CostChart extends StatelessWidget {
 
                 getTouchedSpotIndicator:
                     (LineChartBarData barData, List<int> indicators) {
-                  return indicators.map((index) {
-                    return TouchedSpotIndicatorData(
-                      FlLine(
-                        color: Colors.white.withOpacity(0.9),
-                        strokeWidth: 1.2,          
-                        dashArray: null,          
-                      ),
-
-                      FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, barData, index) {
-                          return FlDotCirclePainter(
-                            radius: 4,                    
-                            color: Colors.white,
-                            strokeWidth: 2,
-                            strokeColor: Colors.indigoAccent,
-                          );
-                        },
-                      ),
-                    );
-                  }).toList();
-                },
+                      return indicators.map((index) {
+                        return TouchedSpotIndicatorData(
+                          FlLine(
+                            color: Colors.white.withOpacity(0.9),
+                            strokeWidth: 1.2,
+                          ),
+                          FlDotData(
+                            show: true,
+                            getDotPainter: (spot, percent, barData, index) {
+                              return FlDotCirclePainter(
+                                radius: 4,
+                                color: Colors.white,
+                                strokeWidth: 2,
+                                strokeColor: Colors.indigoAccent,
+                              );
+                            },
+                          ),
+                        );
+                      }).toList();
+                    },
               ),
 
               clipData: const FlClipData.all(),
               titlesData: FlTitlesData(
                 show: true,
                 bottomTitles: AxisTitles(
-                  axisNameWidget: Text('Hours', style: GoogleFonts.poppins(color: Colors.white70)),
+                  axisNameWidget: Text(
+                    'Time of Day',
+                    style: GoogleFonts.poppins(color: Colors.white70),
+                  ),
                   sideTitles: SideTitles(
                     showTitles: true,
                     getTitlesWidget: (value, meta) {
-                        if (value % 4 == 0) { 
-                            return SideTitleWidget(
-                                axisSide: meta.axisSide,
-                                child: Text('${value.toInt()}h', style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12)),
-                            );
-                        }
-                        return const SizedBox.shrink();
+                      if (value % 4 == 0) {
+                        final int hoursPassed = value.toInt();
+
+                        final int totalStartMinutes =
+                            startTime.hour * 60 + startTime.minute;
+                        final int totalCurrentMinutes =
+                            (totalStartMinutes + (hoursPassed * 60)) % 1440;
+
+                        final int displayHour = totalCurrentMinutes ~/ 60;
+                        final int displayMinute = totalCurrentMinutes % 60;
+
+                        final String label =
+                            '${displayHour.toString().padLeft(2, '0')}:${displayMinute.toString().padLeft(2, '0')}';
+
+                        return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          child: Text(
+                            label,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
                     },
                     interval: 1,
                     reservedSize: 30,
                   ),
                 ),
                 leftTitles: AxisTitles(
-                    axisNameWidget: Text('Cost (€)', style: GoogleFonts.poppins(color: Colors.white70)),
-                    sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) => Text('€${value.toInt()}', style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12)),
-                        reservedSize: 40,
-                        interval: (maxY / 5).ceilToDouble(), 
+                  axisNameWidget: Text(
+                    'Cost (€)',
+                    style: GoogleFonts.poppins(color: Colors.white70),
+                  ),
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) => Text(
+                      '€${value.toInt()}',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
                     ),
+                    reservedSize: 40,
+                    interval: (maxY / 5).ceilToDouble(),
+                  ),
                 ),
-                // NEW: Hide top and right titles
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
               ),
-              
-              // NEW: Show only left and bottom borders
+
               borderData: FlBorderData(
                 show: true,
                 border: Border(
-                  bottom: BorderSide(color: Colors.white24.withOpacity(0.5), width: 1.5),
-                  left: BorderSide(color: Colors.white24.withOpacity(0.5), width: 1.5),
-                  top: BorderSide.none, // Hide top border
-                  right: BorderSide.none, // Hide right border
+                  bottom: BorderSide(
+                    color: Colors.white24.withOpacity(0.5),
+                    width: 1.5,
+                  ),
+                  left: BorderSide(
+                    color: Colors.white24.withOpacity(0.5),
+                    width: 1.5,
+                  ),
+                  top: BorderSide.none,
+                  right: BorderSide.none,
                 ),
               ),
 
               lineBarsData: [
                 LineChartBarData(
                   spots: chartData,
-                  isCurved: true,
+                  isCurved: !isFixedRate,
+                  preventCurveOverShooting: false,
                   color: Colors.indigoAccent,
                   barWidth: 4,
                   isStrokeCapRound: true,
@@ -238,15 +316,15 @@ class CostChart extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-                Expanded(child: _buildSummaryBox('1 Hour', 1)), 
-                const SizedBox(width: 8),
-                Expanded(child: _buildSummaryBox('4 Hours', 4)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildSummaryBox('24 Hours', 24)),
-            ]
-        )
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Expanded(child: _buildSummaryBox('1 Hour', 1)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildSummaryBox('4 Hours', 4)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildSummaryBox('24 Hours', 24)),
+          ],
+        ),
       ],
     );
   }

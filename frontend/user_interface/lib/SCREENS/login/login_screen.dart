@@ -5,6 +5,7 @@ import 'package:user_interface/SCREENS/login/utils/custom_switch.dart';
 import 'package:user_interface/SCREENS/root_screen.dart';
 import 'package:user_interface/SERVICES/auth_service.dart';
 import 'package:user_interface/services/AUTHETNTICATION%20HELPERS/secure_storage_service.dart';
+import 'forgot_password.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,9 +15,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-
   final AuthService _authService = AuthService();
-  final SecureStorageService _storageService = SecureStorageService(); 
+  final SecureStorageService _storageService = SecureStorageService();
 
   bool isLogin = true;
   bool showPassword = false;
@@ -28,9 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   void _navigateToMain() {
-    Navigator.of(context).pushReplacement(
-      slideRoute(const RootPage()), 
-    );
+    Navigator.of(context).pushReplacement(slideRoute(const RootPage()));
   }
 
   void _handleSignUp() async {
@@ -52,14 +50,16 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result != null) {
       final accessToken = result['tokens']['access'];
       final refreshToken = result['tokens']['refresh'];
-      
+
       await _storageService.saveTokens(
-        accessToken: accessToken, 
-        refreshToken: refreshToken
+        accessToken: accessToken,
+        refreshToken: refreshToken,
       );
       _navigateToMain();
     } else {
-      _showErrorSnackbar('Registration failed. Please check the information entered.');
+      _showErrorSnackbar(
+        'Registration failed. Please check the information entered.',
+      );
     }
   }
 
@@ -78,24 +78,23 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (result != null) {
-      final accessToken = result['access']; 
-      final refreshToken = result['refresh']; 
-      
+      final accessToken = result['access'];
+      final refreshToken = result['refresh'];
+
       await _storageService.saveTokens(
-        accessToken: accessToken, 
-        refreshToken: refreshToken
+        accessToken: accessToken,
+        refreshToken: refreshToken,
       );
       _navigateToMain();
     } else {
-      _showErrorSnackbar('Access failed, Invalid credantials.'); 
+      _showErrorSnackbar('Access failed, Invalid credantials.');
     }
   }
-  
+
   void _showErrorSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: Colors.red,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -192,11 +191,35 @@ class _LoginScreenState extends State<LoginScreen> {
                           setState(() => showPassword = !showPassword);
                         },
                       ),
+
+                      if (isLogin)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              "Forgot Password?",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ),
+
                       const SizedBox(height: 30),
                       ElevatedButton(
                         onPressed: () {
                           if (isLogin) {
-                             _handleLogin();
+                            _handleLogin();
                           } else {
                             _handleSignUp();
                           }
@@ -209,11 +232,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(25),
                           ),
                         ),
-                        child: _isLoading 
-                            ? const SizedBox( 
+                        child: _isLoading
+                            ? const SizedBox(
                                 height: 24,
                                 width: 24,
-                                child: CircularProgressIndicator(color: Colors.black),
+                                child: CircularProgressIndicator(
+                                  color: Colors.black,
+                                ),
                               )
                             : Text(
                                 isLogin ? "Log In" : "Sign Up",
@@ -222,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   fontSize: 16,
                                 ),
                               ),
-                      )
+                      ),
                     ],
                   ),
                 ),
