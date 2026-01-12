@@ -5,6 +5,7 @@ import 'package:officer_interface/MODELS/parking_session.dart';
 
 import 'package:officer_interface/services/controller_service.dart';
 import 'package:officer_interface/services/auth_service.dart'; 
+import 'package:officer_interface/SCREENS/login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -58,8 +59,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleLogout() async {
     await AuthService.logout();
     if (mounted) {
-      // Navigate to login screen (assuming main.dart will handle pushReplacement)
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      // Navigate to LoginScreen and remove all previous routes
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     }
   }
 

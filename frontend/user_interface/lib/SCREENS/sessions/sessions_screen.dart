@@ -13,6 +13,7 @@ import 'package:user_interface/STATE/parking_session_state.dart';
 import 'package:user_interface/STATE/payment_state.dart';
 import 'package:user_interface/SCREENS/payment/choose_payment_method_screen.dart';
 import 'utils/limited_history_list.dart';
+import 'package:user_interface/SCREENS/start session/start_session_screen.dart';
 
 class SessionsScreen extends ConsumerStatefulWidget {
   const SessionsScreen({super.key});
@@ -136,6 +137,81 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
     setState(() => _isStopping = false);
   }
 
+  void _extendSession(int sessionId, ParkingSession session) async {
+    // Mostra dialog di conferma
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF020B3C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Extend Session',
+          style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'The current session will be stopped and you can start a new one immediately.\n\nNo penalty will be applied.',
+          style: GoogleFonts.poppins(color: Colors.white70, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.white54)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.amber),
+            child: Text(
+              'Continue',
+              style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isStopping = true);
+
+    // Termina la sessione corrente
+    final endedSession = await _sessionService.endSession(sessionId);
+
+    if (mounted && endedSession != null) {
+      // Reset stato
+      ref.read(parkingControllerProvider.notifier).reset();
+      ref.read(paymentProvider.notifier).resetPreAuthorization();
+
+      // Naviga alla schermata di nuova sessione
+      if (session.parkingLot != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => StartSessionScreen(
+              parkingLot: session.parkingLot!,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Parking lot information not available.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+
+      _loadSessions();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to end session. Please try again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+
+    setState(() => _isStopping = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeState = ref.watch(parkingControllerProvider);
@@ -233,7 +309,9 @@ class _SessionsScreenState extends ConsumerState<SessionsScreen> {
     return ActiveSessionCard(
       session: sessions.first,
       onEndSession: () => _stopSession(sessions.first.id),
+      onExtendSession: () => _extendSession(sessions.first.id, sessions.first), // NEW
       isStopping: _isStopping,
     );
   }
+
 }

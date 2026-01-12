@@ -195,35 +195,74 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
     // ✅ Confirm dialog with "Pay with ..." + Change method
     while (true) {
       final payLabel = ref.read(paymentProvider).defaultMethodLabel;
+      final String endTimeStr = DateFormat('dd MMM yyyy, HH:mm').format(_plannedEndTime);
 
       final action = await showDialog<StartSessionConfirmAction>(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          title:
-              Text('Confirm Payment', style: GoogleFonts.poppins(color: Colors.white)),
-          content: Text(
-            'You are purchasing $durationStr of parking.\n\n'
-            'Total: €${_prepaidCost.toStringAsFixed(2)}\n\n'
-            'Pay with: $payLabel\n\n'
-            'This amount is non-refundable.',
-            style: GoogleFonts.poppins(color: Colors.white70),
+          backgroundColor: const Color(0xFF020B3C),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Confirm Payment',
+            style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
           ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSessionSummary(durationStr, endTimeStr),
+                const SizedBox(height: 12),
+                Text('Payment method', style: GoogleFonts.poppins(color: Colors.white54, fontSize: 13)),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(payLabel, style: GoogleFonts.poppins(color: Colors.white))),
+                      Icon(Icons.payment, color: Colors.white54, size: 18),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Full-width Change method button (giallo)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context, StartSessionConfirmAction.changeMethod),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.amber),
+                    child: Text('Change method', style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+                Text('This amount is non-refundable.', style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12)),
+              ],
+            ),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, StartSessionConfirmAction.cancel),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-            ),
-            TextButton(
-              onPressed: () =>
-                  Navigator.pop(context, StartSessionConfirmAction.changeMethod),
-              child: const Text('Change method',
-                  style: TextStyle(color: Colors.white)),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, StartSessionConfirmAction.confirm),
-              style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent),
-              child: const Text('Pay & Start', style: TextStyle(color: Colors.black)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, StartSessionConfirmAction.cancel),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                  child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, StartSessionConfirmAction.confirm),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent),
+                  child: Text('Pay & Start', style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.w700)),
+                ),
+              ],
             ),
           ],
         ),
@@ -284,6 +323,87 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
     setState(() => _isLoading = false);
   }
 
+  Widget _buildSessionSummary(String durationStr, String endTimeStr) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Parcheggio
+          Row(
+            children: [
+              const Icon(Icons.location_on, color: Colors.amber, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(widget.parkingLot.name,
+                        style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(widget.parkingLot.address,
+                        style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Veicolo
+          Row(
+            children: [
+              const Icon(Icons.directions_car, color: Colors.white70, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${_selectedVehicle?.plate ?? '—'} • ${_selectedVehicle?.name ?? ''}',
+                  style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Durata + Fine
+          Row(
+            children: [
+              const Icon(Icons.access_time, color: Colors.white70, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(durationStr, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text('Ends: $endTimeStr', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Totale
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Total', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13)),
+              Text('€${_prepaidCost.toStringAsFixed(2)}',
+                  style: GoogleFonts.poppins(color: Colors.greenAccent, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (ref.watch(parkingControllerProvider).active) {
@@ -292,7 +412,6 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
       );
     }
 
-    // 🚨 CONTROLLO TIPO TARIFFA
     final isFixedDaily = widget.parkingLot.tariffConfig.type == 'FIXED_DAILY';
 
     return Scaffold(
@@ -310,7 +429,6 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                       _buildParkingDetails(),
                       const SizedBox(height: 20),
 
-                      // 🚨 SWITCH WIDGET
                       isFixedDaily
                           ? _buildDailyDurationSelector()
                           : _buildPrecisionDurationSelector(),
@@ -352,7 +470,7 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
           IconButton(
             icon: const Icon(IconlyLight.arrow_left, color: Colors.white),
             onPressed: () => Navigator.of(context)
-                .push(slideRoute(const RootPage(initialIndex: 1))),
+                .push(slideRoute(const RootPage(initialIndex: 0))),
           ),
           Expanded(
             child: Center(
@@ -434,7 +552,6 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
     return 'Variable Hourly Rate';
   }
 
-  // 🌟 SELETTORE GIORNALIERO (FLAT)
   Widget _buildDailyDurationSelector() {
     final int days = _selectedDurationMinutes ~/ 1440;
     final String endTimeStr = DateFormat('dd MMM, HH:mm').format(_plannedEndTime);
@@ -530,7 +647,6 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
     );
   }
 
-  // 🌟 SELETTORE PRECISIONE (ORARIO)
   Widget _buildPrecisionDurationSelector() {
     final int hours = _selectedDurationMinutes ~/ 60;
     final int minutes = _selectedDurationMinutes % 60;
@@ -800,7 +916,7 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: Colors.black))
               : Text(
-                  'PAY €${_prepaidCost.toStringAsFixed(2)} & START',
+                  'GO TO CHECKOUT',
                   style: GoogleFonts.poppins(
                       fontSize: 18, fontWeight: FontWeight.bold),
                 ),

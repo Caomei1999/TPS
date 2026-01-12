@@ -10,6 +10,8 @@ import 'package:manager_interface/SCREENS/parking%20detail/parking_detail_screen
 import 'package:manager_interface/models/parking.dart';
 import 'package:manager_interface/SCREENS/home/utils/parking_card.dart';
 import '../../services/parking_service.dart';
+import 'package:manager_interface/SERVICES/auth_service.dart';
+import 'package:manager_interface/SCREENS/login_screen.dart';
 
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
@@ -309,24 +311,56 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            ElevatedButton.icon(
-              onPressed: _handleAddParking,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.greenAccent,
-                foregroundColor: const Color(0xFF020B3C),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 15,
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _handleAddParking,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.greenAccent,
+                    foregroundColor: const Color(0xFF020B3C),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 15,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add),
+                  label: Text(
+                    'Add Parking',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await AuthService.logout();
+                    if (!mounted) return;
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      (route) => false,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      side: BorderSide(color: Colors.white10),
+                    ),
+                  ),
+                  icon: const Icon(Icons.logout, color: Colors.redAccent),
+                  label: Text(
+                    'Logout',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
                 ),
-              ),
-              icon: const Icon(Icons.add),
-              label: Text(
-                'Add Parking',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-              ),
+              ],
             ),
           ],
         ),

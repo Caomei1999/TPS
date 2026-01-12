@@ -9,12 +9,17 @@ import 'package:user_interface/STATE/parking_session_state.dart';
 class ActiveSessionCard extends ConsumerWidget {
   final ParkingSession session;
   final VoidCallback onEndSession;
+  final VoidCallback onExtendSession; // NEW
   final bool isStopping;
+
+  // Grace period: 10 minuti dopo la scadenza
+  static const Duration gracePeriod = Duration(minutes: 10);
 
   const ActiveSessionCard({
     super.key,
     required this.session,
     required this.onEndSession,
+    required this.onExtendSession, // NEW
     required this.isStopping,
   });
 
@@ -25,26 +30,39 @@ class ActiveSessionCard extends ConsumerWidget {
     final Duration elapsed = elapsedAsync.value ?? Duration.zero;
 
     // 2. Calcola la durata totale e il tempo rimanente
-    // Usiamo durationPurchasedMinutes dal modello
     final int totalMinutes = session.durationPurchasedMinutes;
     final Duration totalDuration = Duration(minutes: totalMinutes);
     
     final Duration remaining = totalDuration - elapsed;
     final bool isExpired = remaining.isNegative;
     
-    // 3. Calcolo percentuale per il grafico circolare (0.0 -> 1.0)
+    // 3. Calcolo grace period
+    final Duration gracePeriodRemaining = isExpired 
+        ? gracePeriod + remaining  // remaining è negativo, quindi sommiamo
+        : Duration.zero;
+    
+    final bool isInGracePeriod = isExpired && !gracePeriodRemaining.isNegative;
+    final bool isFinallyExpired = isExpired && gracePeriodRemaining.isNegative;
+    
+    // 4. Calcolo percentuale per il grafico circolare (0.0 -> 1.0)
     double progress = 0.0;
     if (totalDuration.inSeconds > 0) {
       progress = elapsed.inSeconds / totalDuration.inSeconds;
     }
     if (progress > 1.0) progress = 1.0;
 
-    // 4. Determina Colore e Stato (Verde=Ok, Arancio=In scadenza, Rosso=Scaduto)
+    // 5. Determina Colore e Stato
     Color statusColor = Colors.greenAccent;
     String statusText = "ACTIVE";
     
-    if (isExpired) {
+    // Timer principale sempre a zero quando scaduto
+    Duration displayMainTime = isExpired ? Duration.zero : remaining;
+    
+    if (isFinallyExpired) {
       statusColor = Colors.redAccent;
+      statusText = "PENALTY RISK";
+    } else if (isInGracePeriod) {
+      statusColor = Colors.redAccent;  // ROSSO per expired/grace period
       statusText = "EXPIRED";
     } else if (remaining.inMinutes < 15) {
       statusColor = Colors.orangeAccent;
@@ -77,7 +95,6 @@ class ActiveSessionCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      // Accesso sicuro all'oggetto nidificato
                       session.parkingLot?.name ?? 'Unknown Parking',
                       style: GoogleFonts.poppins(
                         color: Colors.white,
@@ -92,7 +109,6 @@ class ActiveSessionCard extends ConsumerWidget {
                         const Icon(IconlyBold.discovery, size: 14, color: Colors.white70),
                         const SizedBox(width: 5),
                         Text(
-                          // Accesso sicuro all'oggetto nidificato
                           session.vehicle?.plate ?? 'Unknown Plate',
                           style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
                         ),
@@ -173,10 +189,7 @@ class ActiveSessionCard extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      // Se scaduto, mostra il tempo negativo
-                      isExpired 
-                          ? "- ${_formatDuration(remaining.abs())}" 
-                          : _formatDuration(remaining),
+                      _formatDuration(displayMainTime),
                       style: GoogleFonts.poppins(
                         color: statusColor,
                         fontSize: 28,
@@ -185,16 +198,68 @@ class ActiveSessionCard extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    // Usa plannedEndTime dal modello
                     Text(
-                      "Expires at: ${_formatTime(session.plannedEndTime)}",
-                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 14),
+                      isExpired
+                          ? "Expired at: ${_formatTime(session.plannedEndTime)}"
+                          : "Expires at: ${_formatTime(session.plannedEndTime)}",
+                      style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
                     ),
                   ],
                 ),
               ),
             ],
           ),
+
+          // --- WARNING BANNER se in grace period o oltre ---
+          if (isInGracePeriod || isFinallyExpired) ...[
+            const SizedBox(height: 15),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: statusColor.withOpacity(0.5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isFinallyExpired ? Icons.warning : Icons.access_time,
+                    color: statusColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isFinallyExpired
+                              ? 'PENALTY RISK!'
+                              : 'Grace Period: ${_formatDuration(gracePeriodRemaining)}',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isFinallyExpired
+                              ? 'You may be subject to a penalty. Extend or stop now!'
+                              : 'Extend or stop before penalty applies.',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           const SizedBox(height: 20),
 
@@ -215,7 +280,6 @@ class ActiveSessionCard extends ConsumerWidget {
                     Text("Paid Amount", style: GoogleFonts.poppins(color: Colors.white70)),
                   ],
                 ),
-                // Usa prepaidCost dal modello
                 Text(
                   "€${session.prepaidCost.toStringAsFixed(2)}",
                   style: GoogleFonts.poppins(
@@ -230,7 +294,31 @@ class ActiveSessionCard extends ConsumerWidget {
 
           const SizedBox(height: 20),
 
-          // --- BOTTONE STOP ---
+          // --- BOTTONI: EXTEND (se expired) e STOP ---
+          if (isInGracePeriod || isFinallyExpired) ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onExtendSession, // CHANGED from TODO
+                icon: const Icon(Icons.add_circle_outline, size: 20),
+                label: Text(
+                  "EXTEND SESSION",
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  elevation: 5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(

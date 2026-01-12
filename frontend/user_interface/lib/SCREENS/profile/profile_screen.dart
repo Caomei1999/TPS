@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import 'package:user_interface/SERVICES/user_service.dart';
 import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/secure_storage_service.dart';
 import 'package:user_interface/SCREENS/login/login_screen.dart';
-import 'package:user_interface/MAIN%20UTILS/page_transition.dart';
 import 'package:user_interface/MODELS/vehicle.dart';
 import 'package:user_interface/SERVICES/vehicle_service.dart';
 import 'package:user_interface/MAIN%20UTILS/PLATE%20RECOGNITION/vehicle_card.dart';
@@ -64,6 +63,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _handleSaveName() async {
+    // Validazione
+    if (_firstNameController.text.trim().isEmpty ||
+        _lastNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('First name and last name cannot be empty'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     final success = await _userService.updateProfile(
@@ -79,18 +90,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _userData?['first_name'] = _firstNameController.text.trim();
         _userData?['last_name'] = _lastNameController.text.trim();
       });
-      if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Profile updated!")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Profile updated!")),
+        );
+      }
     } else {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Failed to update profile"),
+            content: Text("Failed to update profile. Check the console for details."),
             backgroundColor: Colors.red,
           ),
         );
+      }
     }
   }
 
@@ -130,7 +143,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        slideRoute(const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
         (Route<dynamic> route) => false,
       );
     }

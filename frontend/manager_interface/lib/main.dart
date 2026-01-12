@@ -1,12 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:manager_interface/SCREENS/login_screen.dart';
+import 'package:manager_interface/SCREENS/home/home_screen.dart';
+import 'package:manager_interface/SERVICES/authentication%20helpers/secure_storage_service.dart';
 
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
-  runApp(ManagerApp());
+  final secureStorage = SecureStorageService();
+  final token = await secureStorage.getAccessToken();
+  final bool isLoggedIn = token != null;
+
+  runApp(ManagerApp(isLoggedIn: isLoggedIn));
 }
 
 class ManagerApp extends StatelessWidget {
+  final bool isLoggedIn;
+
+  const ManagerApp({super.key, required this.isLoggedIn});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -15,7 +26,7 @@ class ManagerApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: LoginScreen(),
+      home: isLoggedIn ? const HomeScreen() : const LoginScreen(),
     );
   }
 }

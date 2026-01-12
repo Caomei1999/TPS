@@ -27,7 +27,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await _storageService.deleteTokens();
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
-        slideRoute(const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
         (Route<dynamic> route) => false,
       );
     }
@@ -56,10 +56,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Account deleted successfully')),
         );
-        Navigator.of(context).pushAndRemoveUntil(
-          slideRoute(const LoginScreen()),
-          (Route<dynamic> route) => false,
-        );
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (Route<dynamic> route) => false,
+          );
       }
     } else {
       if (mounted) {

@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/material.dart';
 import 'package:user_interface/MODELS/tariff_config.dart';
 
 const double kPreAuthAmount = 20.0;
@@ -77,7 +76,7 @@ final parkingElapsedProvider = StreamProvider<Duration>((ref) {
 
   return Stream.periodic(
     const Duration(seconds: 1),
-    (_) => DateTime.now().difference(s.startAt!),
+    (_) => DateTime.now().toUtc().difference(s.startAt!.toUtc()),
   );
 });
 

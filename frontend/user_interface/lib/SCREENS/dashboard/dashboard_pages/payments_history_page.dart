@@ -28,19 +28,6 @@ class PaymentsHistoryPage extends ConsumerWidget {
           ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          if (history.isNotEmpty)
-            IconButton(
-              tooltip: 'Clear',
-              onPressed: () {
-                ref.read(paymentProvider.notifier).clearHistory();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Payment history cleared.')),
-                );
-              },
-              icon: const Icon(Icons.delete_outline),
-            ),
-        ],
       ),
       body: Container(
         decoration: AppTheme.backgroundGradientDecoration,

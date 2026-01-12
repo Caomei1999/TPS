@@ -5,6 +5,7 @@ import 'package:iconly/iconly.dart';
 
 import 'package:user_interface/STATE/payment_state.dart';
 import 'package:user_interface/SCREENS/dashboard/dashboard_pages/payments_method_page/payment_methods_page.dart';
+import 'package:user_interface/MAIN UTILS/app_theme.dart';
 
 class ChoosePaymentMethodScreen extends ConsumerStatefulWidget {
   final double? amount;
@@ -19,7 +20,7 @@ class ChoosePaymentMethodScreen extends ConsumerStatefulWidget {
 
 class _ChoosePaymentMethodScreenState
     extends ConsumerState<ChoosePaymentMethodScreen> {
-  String? _selectedType; // 'card' | 'apple_pay' | 'google_pay'
+  String? _selectedType; 
 
   @override
   void initState() {
@@ -32,7 +33,6 @@ class _ChoosePaymentMethodScreenState
     setState(() => _selectedType = type);
   }
 
-  /// ✅ Now returns whether something changed (e.g., user set a default card)
   Future<bool> _openManageCards() async {
     final result = await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const PaymentMethodsPage()),
@@ -91,81 +91,97 @@ class _ChoosePaymentMethodScreenState
         ? 'Amount: €${widget.amount!.toStringAsFixed(2)}'
         : 'Set your default payment method';
 
+    final double topOffset = MediaQuery.of(context).padding.top + kToolbarHeight + 16;
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      extendBody: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         foregroundColor: Colors.white,
         title: Text(title, style: GoogleFonts.poppins()),
       ),
-      backgroundColor: const Color(0xFF101223),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                amountText,
-                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              _MethodTile(
-                title: 'Apple Pay',
-                subtitle: 'Fast • Secure • No card details stored',
-                icon: IconlyBold.wallet,
-                selected: _selectedType == 'apple_pay',
-                onTap: () => _select('apple_pay'),
-              ),
-              const SizedBox(height: 10),
-              _MethodTile(
-                title: 'Google Pay',
-                subtitle: 'Fast • Secure • No card details stored',
-                icon: IconlyBold.wallet,
-                selected: _selectedType == 'google_pay',
-                onTap: () => _select('google_pay'),
-              ),
-              const SizedBox(height: 10),
-              _MethodTile(
-                title: 'Credit / Debit Card',
-                subtitle: pay.hasMethod
-                    ? 'Using saved card •••• ${pay.method}'
-                    : 'No saved card. Tap “Manage cards” to add one.',
-                icon: Icons.credit_card_rounded,
-                selected: _selectedType == 'card',
-                onTap: () => _select('card'),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: _openManageCards,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white24),
+      backgroundColor: Colors.transparent,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: AppTheme.backgroundGradientDecoration,
+        child: SafeArea(
+          top: false,
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, topOffset, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  amountText,
+                  style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
                 ),
-                child: Text('Manage cards', style: GoogleFonts.poppins()),
-              ),
-              const Spacer(),
-              Text(
-                'Note: Payments are simulated or delegated to third-party providers. '
-                'We do not store full card details in the app.',
-                style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 52,
-                child: FilledButton(
-                  onPressed: _confirm,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.greenAccent,
+                const SizedBox(height: 12),
+                _MethodTile(
+                  title: 'Apple Pay',
+                  subtitle: 'Fast • Secure • No card details stored',
+                  icon: IconlyBold.wallet,
+                  selected: _selectedType == 'apple_pay',
+                  onTap: () => _select('apple_pay'),
+                ),
+                const SizedBox(height: 10),
+                _MethodTile(
+                  title: 'Google Pay',
+                  subtitle: 'Fast • Secure • No card details stored',
+                  icon: IconlyBold.wallet,
+                  selected: _selectedType == 'google_pay',
+                  onTap: () => _select('google_pay'),
+                ),
+                const SizedBox(height: 10),
+                _MethodTile(
+                  title: 'Credit / Debit Card',
+                  subtitle: pay.hasMethod
+                      ? 'Using saved card •••• ${pay.method}'
+                      : 'No saved card. Tap “Manage cards” to add one.',
+                  icon: Icons.credit_card_rounded,
+                  selected: _selectedType == 'card',
+                  onTap: () => _select('card'),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: _openManageCards,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Colors.white24),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: Text(
-                    widget.amount != null
-                        ? 'Pay €${widget.amount!.toStringAsFixed(2)}'
-                        : 'Confirm',
-                    style: GoogleFonts.poppins(color: Colors.black),
+                  child: Text('Manage cards', style: GoogleFonts.poppins()),
+                ),
+                const Spacer(),
+                Text(
+                  'Note: Payments are delegated to third-party providers. '
+                  'We do not store full card details in the app.',
+                  style: GoogleFonts.poppins(color: Colors.white54, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _confirm,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.greenAccent,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text(
+                      widget.amount != null
+                          ? 'Pay €${widget.amount!.toStringAsFixed(2)}'
+                          : 'Confirm',
+                      style: GoogleFonts.poppins(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
-              ),
-            ],
+                SizedBox(height: MediaQuery.of(context).padding.bottom),
+              ],
+            ),
           ),
         ),
       ),
@@ -196,12 +212,15 @@ class _MethodTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E),
+          color: Colors.white.withOpacity(0.03),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected ? Colors.greenAccent : Colors.white12,
             width: selected ? 2 : 1,
           ),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8, offset: const Offset(0,4)),
+          ],
         ),
         child: Row(
           children: [
