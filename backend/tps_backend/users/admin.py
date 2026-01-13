@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from .models import CustomUser
 
 from parkings.models import Parking 
+from .models import Shift
+
 
 def get_dynamic_city_choices():
 
@@ -133,3 +135,27 @@ class CustomUserAdmin(ModelAdmin):
     def role_badge(self, obj):
         return obj.get_role_display().upper()
     role_badge.short_description = "Role"
+
+
+
+@admin.register(Shift)
+class ShiftAdmin(ModelAdmin):
+    list_display = ("id", "officer", "status", "start_time", "end_time")
+    list_filter = ("status", "start_time")
+    search_fields = ("officer__email",)
+
+    # only superuser can see this module in the admin
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser

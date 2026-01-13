@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -8,8 +10,20 @@ import 'package:officer_interface/services/auth_service.dart';
 import 'package:officer_interface/SCREENS/login_screen.dart';
 import 'package:officer_interface/services/user_session.dart';
 
+// ✅ 新增：值班相关
+import 'package:officer_interface/services/shift_service.dart';
+import 'package:officer_interface/SCREENS/start_shift_screen.dart';
+
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  /// ✅ 可选：如果从 StartShiftScreen 进入，则会传入
+  final DateTime? shiftStartTime;
+  final int? shiftId;
+
+  const HomeScreen({
+    super.key,
+    this.shiftStartTime,
+    this.shiftId,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -20,6 +34,43 @@ class _HomeScreenState extends State<HomeScreen> {
   ParkingSession? _activeSession;
   String? _message;
   bool _isLoading = false;
+
+  // ✅ Shift timer
+  Timer? _timer;
+  Duration _elapsed = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 只有当传入 shiftStartTime 时才启动计时器
+    if (widget.shiftStartTime != null) {
+      _tick();
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    }
+  }
+
+  void _tick() {
+    final start = widget.shiftStartTime;
+    if (start == null) return;
+    setState(() {
+      _elapsed = DateTime.now().difference(start);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _plateController.dispose();
+    super.dispose();
+  }
+
+  String _formatElapsed(Duration d) {
+    final h = d.inHours.toString().padLeft(2, '0');
+    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
+    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return "$h:$m:$s";
+  }
 
   Future<void> _searchPlate() async {
     final plate = _plateController.text.trim().toUpperCase();
@@ -43,8 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _activeSession = session;
         if (session == null) {
-          _message =
-              "Vehicle with plate '$plate' has NO active parking session.";
+          _message = "Vehicle with plate '$plate' has NO active parking session.";
         }
       });
     } catch (e) {
@@ -68,6 +118,34 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _handleEndShift() async {
+    // 没有 shiftId 就不做（理论上不会发生，因为从 StartShift 来都会有）
+    if (widget.shiftId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No active shift info found.")),
+      );
+      return;
+    }
+
+    try {
+      await ShiftService.endShift();
+
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const StartShiftScreen()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Failed to end shift."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = UserSession();
@@ -80,6 +158,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ? "No Jurisdiction Assigned"
           : session.allowedCities.join(", ");
     }
+
+    final hasShift = widget.shiftStartTime != null && widget.shiftId != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -103,22 +183,50 @@ class _HomeScreenState extends State<HomeScreen> {
                   size: 14,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  jurisdictionText.toUpperCase(),
-                  style: GoogleFonts.poppins(
-                    color: Colors.greenAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.0,
+                Expanded(
+                  child: Text(
+                    jurisdictionText.toUpperCase(),
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      color: Colors.greenAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.0,
+                    ),
                   ),
                 ),
               ],
             ),
+
+            // ✅ 新增：Shift 计时器显示
+            if (hasShift) ...[
+              const SizedBox(height: 4),
+              Text(
+                "SHIFT: ${_formatElapsed(_elapsed)}",
+                style: GoogleFonts.poppins(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ],
           ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          // ✅ 新增：End Shift
+          if (hasShift)
+            TextButton.icon(
+              onPressed: _handleEndShift,
+              icon: const Icon(Icons.stop_circle, color: Colors.orangeAccent),
+              label: Text(
+                "End Shift",
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+            ),
+
           TextButton.icon(
             onPressed: _handleLogout,
             icon: const Icon(Icons.logout, color: Colors.redAccent),
@@ -167,7 +275,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-
                   Row(
                     children: [
                       Expanded(child: _buildPlateTextField()),
@@ -199,7 +306,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 40),
-
                   _buildResultsArea(),
                 ],
               ),
@@ -333,7 +439,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const Divider(color: Colors.white38, height: 30),
-
           _buildInfoRow("License Plate", session.vehiclePlate),
           _buildInfoRow(
             "Parking Lot",
@@ -341,9 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           _buildInfoRow("City", session.parkingLot?.city ?? "N/A"),
           _buildInfoRow("Session ID", "#${session.id}"),
-
           const Divider(color: Colors.white38, height: 30),
-
           _buildInfoRow(
             "Start Time",
             formatter.format(startTime),
@@ -377,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               value,
               style: GoogleFonts.poppins(
-                color: isHighlight ? Colors.white : Colors.white,
+                color: Colors.white,
                 fontSize: 16,
                 fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
               ),

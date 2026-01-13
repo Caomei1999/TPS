@@ -88,3 +88,38 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     class Meta:
         verbose_name = 'user'
         verbose_name_plural = 'users'
+
+# users/models.py
+
+from django.db import models
+from django.utils import timezone
+
+class Shift(models.Model):
+    STATUS_CHOICES = [
+        ("OPEN", "Open"),
+        ("CLOSED", "Closed"),
+    ]
+
+    officer = models.ForeignKey(
+        "users.CustomUser",
+        on_delete=models.CASCADE,
+        related_name="shifts"
+    )
+    start_time = models.DateTimeField(default=timezone.now)
+    end_time = models.DateTimeField(blank=True, null=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="OPEN")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def close(self):
+        if self.status == "CLOSED":
+            return
+        self.end_time = timezone.now()
+        self.status = "CLOSED"
+        self.save(update_fields=["end_time", "status"])
+
+    def __str__(self):
+        return f"Shift#{self.id} {self.officer.email} {self.status}"
+
+    class Meta:
+        ordering = ["-start_time"]
