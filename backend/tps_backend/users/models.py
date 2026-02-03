@@ -32,7 +32,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     Custom user model with roles:
     - user: regular user
     - controller: can check vehicles
-    - manager: can manage parkings + controller permissions
+    - manager: can manage parkings
     - superuser: full admin access
     """
     ROLE_CHOICES = [
@@ -56,17 +56,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
 
-    def is_controller(self):
-        return self.role in ['controller', 'manager', 'superuser']
-
-    def is_manager(self):
-        return self.role in ['manager', 'superuser']
-
     def __str__(self):
         return f"{self.email} ({self.role})"
 
     def get_full_name(self):
-
         full_name = f"{self.first_name} {self.last_name}".strip()
         return full_name or self.email
 
@@ -75,7 +68,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     @property
     def username(self):
- 
         return self.email
 
     # Permissions required by Django admin

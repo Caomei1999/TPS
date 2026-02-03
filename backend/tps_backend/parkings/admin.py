@@ -5,24 +5,28 @@ from .models import Parking, Spot, ParkingEntrance
 class ParkingEntranceInline(TabularInline):
     model = ParkingEntrance
     fields = ('address_line', 'latitude', 'longitude') 
-    extra = 1
+    extra = 0
+    verbose_name = 'Entrance (for underground parking)'
+    verbose_name_plural = 'Entrances (optional - leave empty for street parking)'
 
 @admin.register(Parking)
 class ParkingAdmin(ModelAdmin):
     inlines = [ParkingEntranceInline]
     list_display = (
         'name', 'city', 'address', 
-        'latitude', 'longitude',
         'total_spots', 'available_spots', 
         'rate_per_hour',
-        'tariff_config_json'
     )
     search_fields = ('name', 'city', 'address')
     fields = (
         'name', 'city', 'address', 'rate_per_hour', 
-        'latitude', 'longitude',
+        'polygon_coordinates',
         'tariff_config_json' 
     )
+    
+    help_texts = {
+        'polygon_coordinates': 'JSON array of coordinates: [{"lat": 41.123, "lng": 12.456}, ...]'
+    }
 
 @admin.register(Spot)
 class SpotAdmin(ModelAdmin):

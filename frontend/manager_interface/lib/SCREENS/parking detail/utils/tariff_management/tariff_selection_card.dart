@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:manager_interface/SCREENS/parking%20detail/utils/parking_cost_calculator.dart';
+import 'package:manager_interface/models/tariff_config.dart';
 
 typedef FieldUpdateCallback = void Function(String value);
 typedef TimeUpdateCallback = void Function(TimeOfDay time);

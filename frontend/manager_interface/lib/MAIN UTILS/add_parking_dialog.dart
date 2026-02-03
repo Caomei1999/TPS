@@ -10,7 +10,6 @@ Future<Parking?> showAddParkingDialog(
   final nameController = TextEditingController();
   final addressController = TextEditingController();
   final totalSpotsController = TextEditingController();
-  // RIMOSSO: rateController
   final latController = TextEditingController();
   final lngController = TextEditingController();
   final newCityController = TextEditingController();
@@ -20,6 +19,9 @@ Future<Parking?> showAddParkingDialog(
 
   String selectedCityOption = cityOptions.first;
   bool isLoading = false;
+  
+  // Polygon coordinates list
+  List<ParkingCoordinate> polygonCoords = [];
 
   return showDialog<Parking>(
     context: context,
@@ -48,48 +50,48 @@ Future<Parking?> showAddParkingDialog(
               name: nameController.text,
               city: finalCity,
               address: addressController.text,
+              ratePerHour: 2.5,
               totalSpots: int.parse(totalSpotsController.text), 
               occupiedSpots: 0,
-              // NUOVI CAMPI AGGIUNTI (Inizializzati a 0)
               todayEntries: 0, 
               todayRevenue: 0.0,
-              
               latitude: double.tryParse(latController.text),
               longitude: double.tryParse(lngController.text),
-              tariffConfigJson: Parking.defaultTariffConfig.toJson(), // Usa toJsonString()
+              tariffConfigJson: Parking.defaultTariffConfig.toJson(),
+              polygonCoords: polygonCoords,
+              entrances: [],
             );
 
             try {
-              // 1. Salva il parcheggio
               final savedParking = await ParkingService.saveParking(newParkingData);
               
-              // 2. Crea i posti
               final int spotsToCreate = int.parse(totalSpotsController.text);
 
               if (spotsToCreate > 0) {
                 List<Future> spotFutures = [];
-                // Nota: Per grandi numeri, idealmente il backend dovrebbe avere un endpoint 'bulk_create'
                 for (int i = 0; i < spotsToCreate; i++) {
                   spotFutures.add(ParkingService.addSpot(savedParking.id));
                 }
                 await Future.wait(spotFutures);
               }
 
-              // 3. Costruisci l'oggetto finale per aggiornare la UI locale
               final finalParking = Parking(
                 id: savedParking.id,
                 name: savedParking.name,
                 city: savedParking.city,
                 address: savedParking.address,
+                ratePerHour: savedParking.ratePerHour,
                 totalSpots: spotsToCreate, 
                 occupiedSpots: 0,
-                // NUOVI CAMPI AGGIUNTI
                 todayEntries: 0, 
                 todayRevenue: 0.0,
-                
                 latitude: savedParking.latitude,
                 longitude: savedParking.longitude,
+                markerLatitude: savedParking.markerLatitude,
+                markerLongitude: savedParking.markerLongitude,
                 tariffConfigJson: savedParking.tariffConfigJson,
+                polygonCoords: savedParking.polygonCoords,
+                entrances: savedParking.entrances,
               );
 
               Navigator.of(context).pop(finalParking);
@@ -101,10 +103,134 @@ Future<Parking?> showAddParkingDialog(
             }
           }
 
+          void addPolygonPoint() {
+            final latCoordController = TextEditingController();
+            final lngCoordController = TextEditingController();
+
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: const Color.fromARGB(255, 52, 12, 108),
+                title: Text('Add Polygon Point', style: GoogleFonts.poppins(color: Colors.white)),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildStyledTextField(latCoordController, 'Latitude', true),
+                    const SizedBox(height: 10),
+                    _buildStyledTextField(lngCoordController, 'Longitude', true),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.white)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      final latText = latCoordController.text.trim();
+                      final lngText = lngCoordController.text.trim();
+                      
+                      // Validate input
+                      final lat = double.tryParse(latText);
+                      final lng = double.tryParse(lngText);
+                      
+                      if (lat == null || lng == null) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Invalid coordinate format. Please enter valid numbers.',
+                              style: GoogleFonts.poppins(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        return;
+                      }
+                      
+                      // Validate coordinate ranges
+                      if (lat < -90 || lat > 90) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Latitude must be between -90 and 90 degrees.',
+                              style: GoogleFonts.poppins(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        return;
+                      }
+                      
+                      if (lng < -180 || lng > 180) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Longitude must be between -180 and 180 degrees.',
+                              style: GoogleFonts.poppins(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        return;
+                      }
+                      
+                      // Check for duplicate coordinates
+                      final isDuplicate = polygonCoords.any((coord) => 
+                        (coord.lat - lat).abs() < 0.000001 && 
+                        (coord.lng - lng).abs() < 0.000001
+                      );
+                      
+                      if (isDuplicate) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'This coordinate point already exists in the polygon.',
+                              style: GoogleFonts.poppins(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                        return;
+                      }
+                      
+                      // Add valid coordinate
+                      setState(() {
+                        polygonCoords.add(ParkingCoordinate(lat: lat, lng: lng));
+                      });
+                      Navigator.pop(ctx);
+                      
+                      // Show success feedback
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Point added successfully (${polygonCoords.length} total)',
+                            style: GoogleFonts.poppins(color: Colors.white),
+                          ),
+                          backgroundColor: Colors.green,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent),
+                    child: Text('Add', style: GoogleFonts.poppins(color: Colors.black)),
+                  ),
+                ],
+              ),
+            );
+          }
+
           return Dialog(
             backgroundColor: Colors.transparent,
             child: ConstrainedBox( 
-              constraints: const BoxConstraints(maxWidth: 600),
+              constraints: const BoxConstraints(maxWidth: 700),
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -178,18 +304,77 @@ Future<Parking?> showAddParkingDialog(
                         const SizedBox(height: 16),
                         _buildStyledTextField(addressController, 'Address', false, isEnabled: !isLoading),
                         const SizedBox(height: 16),
-                        
-                        // MODIFICATO: Solo Total Spots, rimossa la tariffa
                         _buildStyledTextField(totalSpotsController, 'Total Spots', true, isEnabled: !isLoading),
-                        
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            Expanded(child: _buildStyledTextField(latController, 'Latitude', true, isEnabled: !isLoading)),
+                            Expanded(child: _buildStyledTextField(latController, 'Center Latitude', true, isEnabled: !isLoading)),
                             const SizedBox(width: 10),
-                            Expanded(child: _buildStyledTextField(lngController, 'Longitude', true, isEnabled: !isLoading)),
+                            Expanded(child: _buildStyledTextField(lngController, 'Center Longitude', true, isEnabled: !isLoading)),
                           ],
                         ),
+                        
+                        const SizedBox(height: 20),
+                        Container(height: 1, color: Colors.white30),
+                        const SizedBox(height: 20),
+
+                        // Polygon Coordinates Section
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Polygon Coordinates (${polygonCoords.length} points)',
+                              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: addPolygonPoint,
+                              icon: const Icon(Icons.add_location_alt, size: 16),
+                              label: Text('Add Point', style: GoogleFonts.poppins(fontSize: 12)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.greenAccent,
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 150),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: polygonCoords.length,
+                            itemBuilder: (context, index) {
+                              final coord = polygonCoords[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white10,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Point ${index + 1}: ${coord.lat.toStringAsFixed(6)}, ${coord.lng.toStringAsFixed(6)}',
+                                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 12),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                                      onPressed: () {
+                                        setState(() {
+                                          polygonCoords.removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
                         const SizedBox(height: 24),
 
                         ElevatedButton(
@@ -216,7 +401,6 @@ Future<Parking?> showAddParkingDialog(
     },
   );
 }
-
 
 Widget _buildStyledTextField(TextEditingController controller, String label, bool isNumber, {bool isEnabled = true}) {
   return TextFormField(

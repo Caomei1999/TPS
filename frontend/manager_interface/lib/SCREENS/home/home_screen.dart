@@ -39,12 +39,80 @@ class _HomeScreenState extends State<HomeScreen> {
   // --- Map Data ---
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
+  Set<Polygon> _polygons = {};
   final CameraPosition _initialCameraPosition = const CameraPosition(
     target: LatLng(41.8719, 12.5674), // Default Italy
     zoom: 5.5,
   );
 
   BitmapDescriptor? _parkingIcon;
+
+  // Map style JSON
+  static const String _mapStyle = '''
+[
+  {
+    "featureType": "administrative",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative.land_parcel",
+    "elementType": "labels",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.icon",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "featureType": "road.local",
+    "elementType": "labels",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "featureType": "transit",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  }
+]
+''';
 
   @override
   void initState() {
@@ -112,30 +180,53 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final parkings = await ParkingService.getParkingsByCity(city);
 
-      final newMarkers = parkings
-          .where((p) => p.latitude != null && p.longitude != null)
-          .map(
-            (p) => Marker(
+      final newMarkers = <Marker>{};
+      final newPolygons = <Polygon>{};
+
+      for (var p in parkings) {
+        // Add marker at entrance or centroid
+        if (p.markerLatitude != null && p.markerLongitude != null) {
+          newMarkers.add(
+            Marker(
               markerId: MarkerId('p_${p.id}'),
-              position: LatLng(p.latitude!, p.longitude!),
+              position: LatLng(p.markerLatitude!, p.markerLongitude!),
               infoWindow: InfoWindow(title: p.name, snippet: p.address),
               onTap: () => _navigateToDetail(p),
               icon: _parkingIcon ?? BitmapDescriptor.defaultMarker,
             ),
-          )
-          .toSet();
+          );
+        }
+
+        // Add polygon if coordinates exist
+        if (p.polygonCoords.isNotEmpty) {
+          newPolygons.add(
+            Polygon(
+              polygonId: PolygonId('poly_${p.id}'),
+              points: p.polygonCoords
+                  .map((c) => LatLng(c.lat, c.lng))
+                  .toList(),
+              strokeColor: Colors.indigo,
+              strokeWidth: 3,
+              fillColor: Colors.indigoAccent.withOpacity(0.3),
+              consumeTapEvents: true,
+              onTap: () => _navigateToDetail(p),
+            ),
+          );
+        }
+      }
 
       setState(() {
         selectedCityParkings = parkings;
         filteredCityParkings = parkings;
         _markers = newMarkers;
+        _polygons = newPolygons;
         isParkingsLoading = false;
       });
 
-      if (parkings.isNotEmpty && parkings.first.latitude != null) {
+      if (parkings.isNotEmpty && parkings.first.markerLatitude != null) {
         _mapController?.animateCamera(
           CameraUpdate.newLatLngZoom(
-            LatLng(parkings.first.latitude!, parkings.first.longitude!),
+            LatLng(parkings.first.markerLatitude!, parkings.first.markerLongitude!),
             12,
           ),
         );
@@ -406,7 +497,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: GoogleMap(
         initialCameraPosition: _initialCameraPosition,
         markers: _markers,
-        onMapCreated: (c) => _mapController = c,
+        polygons: _polygons,
+        onMapCreated: (c) {
+          _mapController = c;
+          _mapController?.setMapStyle(_mapStyle);
+        },
         zoomControlsEnabled: false,
         myLocationButtonEnabled: false,
         mapToolbarEnabled: false,

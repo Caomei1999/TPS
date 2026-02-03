@@ -9,7 +9,7 @@ class AuthService {
 
   // Login specific for manager
   static Future<bool> loginManager(String email, String password) async {
-    final url = Uri.parse('$baseUrl/token/');
+    final url = Uri.parse('$baseUrl/token/manager/');
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -19,7 +19,7 @@ class AuthService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
 
-      // Optional: check role via backend (if backend returns user info)
+      // Backend now validates role - if we get here, user is a manager
       final accessToken = data['access'];
       final refreshToken = data['refresh'];
 
@@ -29,14 +29,9 @@ class AuthService {
         refreshToken: refreshToken,
       );
 
-      // If backend returns role, validate manager
-      if (data.containsKey('role') && data['role'] == 'manager') {
-        return true;
-      }
-
-      // If backend doesn't return role, assume all JWT users are allowed
       return true;
     } else {
+      // Login failed - wrong credentials or not a manager
       return false;
     }
   }

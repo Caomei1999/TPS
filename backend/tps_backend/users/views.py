@@ -9,10 +9,12 @@ from django.contrib.auth.tokens import default_token_generator
 from .models import CustomUser 
 from .serializers import (
     UserRegisterSerializer, 
+    UserSerializer,
     ChangePasswordSerializer, 
     PasswordResetRequestSerializer, 
     PasswordResetConfirmSerializer
 )
+from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
@@ -30,6 +32,96 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+
+class ManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Serializer for manager login - only allows manager role
+    """
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Check if user has manager role
+        if self.user.role != 'manager':
+            raise serializers.ValidationError(
+                {"detail": "Access denied. Only managers can access this interface."}
+            )
+        
+        data['role'] = self.user.role
+        return data
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        return token
+
+
+class ManagerTokenObtainPairView(TokenObtainPairView):
+    """
+    Login endpoint specifically for managers
+    """
+    serializer_class = ManagerTokenObtainPairSerializer
+
+
+class ControllerTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Serializer for controller login - only allows controller role
+    """
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Check if user has controller role
+        if self.user.role != 'controller':
+            raise serializers.ValidationError(
+                {"detail": "Access denied. Only controllers can access this interface."}
+            )
+        
+        data['role'] = self.user.role
+        return data
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        return token
+
+
+class ControllerTokenObtainPairView(TokenObtainPairView):
+    """
+    Login endpoint specifically for controllers
+    """
+    serializer_class = ControllerTokenObtainPairSerializer
+
+
+class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Serializer for user login - only allows user role
+    """
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Check if user has user role
+        if self.user.role != 'user':
+            raise serializers.ValidationError(
+                {"detail": "Access denied. Only regular users can access this interface."}
+            )
+        
+        data['role'] = self.user.role
+        return data
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        return token
+
+
+class UserTokenObtainPairView(TokenObtainPairView):
+    """
+    Login endpoint specifically for regular users
+    """
+    serializer_class = UserTokenObtainPairSerializer
 
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)

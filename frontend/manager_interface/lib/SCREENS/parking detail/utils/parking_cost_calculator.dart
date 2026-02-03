@@ -1,34 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:manager_interface/models/tariff_config.dart';
 
-class FlexRule {
-  int durationFromHours;
-  int durationToHours;
-  double multiplier;
-
-  FlexRule({
-    required this.durationFromHours,
-    required this.durationToHours,
-    required this.multiplier,
-  });
-
-  factory FlexRule.fromTariffConfig(Map<String, dynamic> json) {
-    return FlexRule(
-      durationFromHours: json['duration_from_hours'],
-      durationToHours: json['duration_to_hours'],
-      multiplier: double.tryParse(json['multiplier'].toString()) ?? 1.0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'duration_from_hours': durationFromHours,
-      'duration_to_hours': durationToHours,
-      'multiplier': multiplier,
-    };
-  }
-}
-
 class CostCalculator {
   final TariffConfig config;
 

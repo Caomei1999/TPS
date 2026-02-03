@@ -10,6 +10,7 @@ import 'package:manager_interface/SCREENS/parking%20detail/utils/live_stats/live
 import 'package:manager_interface/SCREENS/parking%20detail/utils/parking_cost_calculator.dart';
 import 'package:manager_interface/SCREENS/parking%20detail/utils/tariff_management/spot_stat_widgets.dart';
 import 'package:manager_interface/SCREENS/parking%20detail/utils/tariff_management/tariff_selection_card.dart';
+import 'package:manager_interface/SCREENS/parking%20detail/utils/coordinates/coordinate_editor_dialog.dart';
 import 'package:manager_interface/models/spot.dart';
 import 'package:manager_interface/models/tariff_config.dart';
 import 'package:manager_interface/services/parking_service.dart';
@@ -73,7 +74,7 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
       parking = fetchedParking;
       spots = await ParkingService.getSpots(widget.parkingId);
 
-      _initializeTariffState(parking!.tariffConfig);
+      _initializeTariffState(fetchedParking.tariffConfig);
 
       _simulateCostProjection();
       _calculateProjectedRevenue();
@@ -168,6 +169,7 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
       name: parking!.name,
       city: parking!.city,
       address: parking!.address,
+      ratePerHour: parking!.ratePerHour,
       totalSpots: parking!.totalSpots,
       occupiedSpots: parking!.occupiedSpots,
       todayEntries: parking!.todayEntries,
@@ -175,6 +177,10 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
       tariffConfigJson: configJsonString,
       latitude: parking!.latitude,
       longitude: parking!.longitude,
+      markerLatitude: parking!.markerLatitude,
+      markerLongitude: parking!.markerLongitude,
+      polygonCoords: parking!.polygonCoords,
+      entrances: parking!.entrances,
     );
 
     try {
@@ -212,6 +218,7 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
         name: parking!.name,
         city: parking!.city,
         address: parking!.address,
+        ratePerHour: parking!.ratePerHour,
         totalSpots: parking!.totalSpots + 1,
         occupiedSpots: parking!.occupiedSpots,
         todayEntries: parking!.todayEntries,
@@ -219,6 +226,10 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
         tariffConfigJson: parking!.tariffConfigJson,
         latitude: parking!.latitude,
         longitude: parking!.longitude,
+        markerLatitude: parking!.markerLatitude,
+        markerLongitude: parking!.markerLongitude,
+        polygonCoords: parking!.polygonCoords,
+        entrances: parking!.entrances,
       );
 
       setState(() {
@@ -253,6 +264,7 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
           name: parking!.name,
           city: parking!.city,
           address: parking!.address,
+          ratePerHour: parking!.ratePerHour,
           totalSpots: parking!.totalSpots - 1,
           occupiedSpots:
               parking!.occupiedSpots - (spotToRemove.isOccupied ? 1 : 0),
@@ -261,6 +273,10 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
           tariffConfigJson: parking!.tariffConfigJson,
           latitude: parking!.latitude,
           longitude: parking!.longitude,
+          markerLatitude: parking!.markerLatitude,
+          markerLongitude: parking!.markerLongitude,
+          polygonCoords: parking!.polygonCoords,
+          entrances: parking!.entrances,
         );
 
         setState(() {
@@ -292,6 +308,58 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
         ),
       ),
     ).then((_) => _loadDashboardData());
+  }
+
+  Future<void> _editParkingCoordinates() async {
+    if (parking == null) return;
+
+    final updatedCoords = await showCoordinateEditorDialog(
+      context,
+      initialCoords: parking!.polygonCoords,
+    );
+
+    if (updatedCoords != null) {
+      final updatedParking = Parking(
+        id: parking!.id,
+        name: parking!.name,
+        city: parking!.city,
+        address: parking!.address,
+        ratePerHour: parking!.ratePerHour,
+        totalSpots: parking!.totalSpots,
+        occupiedSpots: parking!.occupiedSpots,
+        todayEntries: parking!.todayEntries,
+        todayRevenue: parking!.todayRevenue,
+        tariffConfigJson: parking!.tariffConfigJson,
+        latitude: parking!.latitude,
+        longitude: parking!.longitude,
+        markerLatitude: parking!.markerLatitude,
+        markerLongitude: parking!.markerLongitude,
+        polygonCoords: updatedCoords,
+        entrances: parking!.entrances,
+      );
+
+      try {
+        await ParkingService.saveParking(updatedParking);
+
+        setState(() {
+          parking = updatedParking;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Polygon coordinates updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update coordinates: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _simulateCostProjection() {
@@ -378,6 +446,24 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          TextButton.icon(
+            onPressed: _editParkingCoordinates,
+            icon: const Icon(
+              Icons.edit_location_alt,
+              color: Colors.blueAccent,
+            ),
+            label: Text(
+              'Edit Parking',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white.withOpacity(0.1),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
           TextButton.icon(
             onPressed: _openLiveMonitor,
             icon: const Icon(

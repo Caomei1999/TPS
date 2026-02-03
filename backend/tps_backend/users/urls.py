@@ -2,7 +2,10 @@ from django.urls import path
 from .views import (
     ProfileView, 
     register_user, 
-    CustomTokenObtainPairView, 
+    CustomTokenObtainPairView,
+    ManagerTokenObtainPairView,
+    ControllerTokenObtainPairView,
+    UserTokenObtainPairView,
     ChangePasswordView, 
     DeleteAccountView,
     PasswordResetRequestView, 
@@ -14,8 +17,14 @@ urlpatterns = [
     # Registration endpoint
     path('register/', register_user, name='register'),
 
-    # JWT login endpoints
+    # JWT login endpoints - generic (for admin/testing)
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    
+    # Role-specific login endpoints
+    path('token/manager/', ManagerTokenObtainPairView.as_view(), name='token_obtain_pair_manager'),
+    path('token/controller/', ControllerTokenObtainPairView.as_view(), name='token_obtain_pair_controller'),
+    path('token/user/', UserTokenObtainPairView.as_view(), name='token_obtain_pair_user'),
+    
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Profile endpoint (requires authentication)
