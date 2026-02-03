@@ -140,9 +140,29 @@ class CustomUserAdmin(ModelAdmin):
 
 @admin.register(Shift)
 class ShiftAdmin(ModelAdmin):
-    list_display = ("id", "officer", "status", "start_time", "end_time")
-    list_filter = ("status", "start_time")
-    search_fields = ("officer__email",)
+    list_display = ("id", "officer", "status", "start_time", "end_time", "get_duration")
+    list_filter = ("status", "start_time", "officer")
+    search_fields = ("officer__email", "officer__first_name", "officer__last_name")
+    readonly_fields = ("created_at", "get_duration")
+    
+    fieldsets = (
+        ("Shift Information", {
+            "fields": ("officer", "status")
+        }),
+        ("Time Records", {
+            "fields": ("start_time", "end_time", "get_duration", "created_at")
+        }),
+    )
+
+    def get_duration(self, obj):
+        """Display shift duration in human-readable format"""
+        if obj.end_time and obj.start_time:
+            duration = obj.end_time - obj.start_time
+            hours = duration.total_seconds() // 3600
+            minutes = (duration.total_seconds() % 3600) // 60
+            return f"{int(hours)}h {int(minutes)}m"
+        return "Ongoing" if obj.status == "OPEN" else "-"
+    get_duration.short_description = "Duration"
 
     # only superuser can see this module in the admin
     def has_module_permission(self, request):

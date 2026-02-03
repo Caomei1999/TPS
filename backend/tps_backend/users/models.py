@@ -76,6 +76,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def has_module_perms(self, app_label):
         return self.is_superuser
+    
+    def can_manage_shifts(self):
+        """Check if user can manage shifts (controller, manager, or superuser)"""
+        return self.role in ['controller', 'manager', 'superuser'] or self.is_superuser
 
     class Meta:
         verbose_name = 'user'
@@ -100,18 +104,27 @@ class Shift(models.Model):
     start_time = models.DateTimeField(default=timezone.now)
     end_time = models.DateTimeField(blank=True, null=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="OPEN")
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def close(self):
+        """Close the shift and record end time"""
         if self.status == "CLOSED":
             return
         self.end_time = timezone.now()
         self.status = "CLOSED"
         self.save(update_fields=["end_time", "status"])
 
+    @property
+    def duration(self):
+        """Get shift duration in seconds"""
+        if self.end_time and self.start_time:
+            return int((self.end_time - self.start_time).total_seconds())
+        return None
+
     def __str__(self):
         return f"Shift#{self.id} {self.officer.email} {self.status}"
 
     class Meta:
         ordering = ["-start_time"]
+        verbose_name = "Controller Shift"
+        verbose_name_plural = "Controller Shifts"

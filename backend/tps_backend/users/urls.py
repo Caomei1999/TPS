@@ -9,10 +9,14 @@ from .views import (
     ChangePasswordView, 
     DeleteAccountView,
     PasswordResetRequestView, 
-    PasswordResetConfirmView
+    PasswordResetConfirmView,
+    StartShiftView, 
+    EndShiftView, 
+    CurrentShiftView,
+    ShiftHistoryView,
+    ActiveOfficersView,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import StartShiftView, EndShiftView, CurrentShiftView
 
 urlpatterns = [
     # Registration endpoint
@@ -40,4 +44,6 @@ urlpatterns = [
     path('shifts/current/', CurrentShiftView.as_view(), name='current_shift'),
     path('shifts/start/', StartShiftView.as_view(), name='start_shift'),
     path('shifts/end/', EndShiftView.as_view(), name='end_shift'),
+    path('shifts/history/', ShiftHistoryView.as_view(), name='shift_history'),
+    path('shifts/active-officers/', ActiveOfficersView.as_view(), name='active_officers'),
 ]

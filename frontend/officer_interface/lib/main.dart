@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:officer_interface/SCREENS/login_screen.dart'; 
-import 'package:officer_interface/SCREENS/home_screen.dart';
+import 'package:officer_interface/SCREENS/start_shift_screen.dart';
 import 'package:officer_interface/services/authentication%20helpers/secure_storage_service.dart';
 
 void main() async {
@@ -40,7 +40,7 @@ class MyApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: const Color.fromARGB(255, 2, 11, 60),
       ),
-      home: isLoggedIn ? const HomeScreen() : const LoginScreen(),
+      home: isLoggedIn ? const StartShiftScreen() : const LoginScreen(),
     );
   }
 }

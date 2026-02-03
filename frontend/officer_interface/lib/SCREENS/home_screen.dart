@@ -2,9 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-
 import 'package:officer_interface/MODELS/parking_session.dart';
 import 'package:officer_interface/services/controller_service.dart';
 import 'package:officer_interface/services/auth_service.dart';
@@ -167,18 +165,71 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _handleLogout() async {
-    await AuthService.logout();
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
-  }
-
   Future<void> _handleEndShift() async {
     if (widget.shiftId == null) return;
+    
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color.fromARGB(255, 2, 11, 60),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            "End Shift?",
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+            ),
+          ),
+          content: Text(
+            "Are you sure you want to end your current shift?",
+            style: GoogleFonts.poppins(
+              color: Colors.white70,
+              fontSize: 15,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              child: Text(
+                "Cancel",
+                style: GoogleFonts.poppins(
+                  color: Colors.white70,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                "End Shift",
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
     await ShiftService.endShift();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
@@ -203,22 +254,45 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          "Controller Dashboard",
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Dashboard",
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            if (hasShift)
+              Text(
+                "Shift: ${_formatElapsed(_elapsed)}",
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.greenAccent,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+          ],
         ),
         actions: [
           if (hasShift)
-            TextButton.icon(
-              onPressed: _handleEndShift,
-              icon: const Icon(Icons.stop, color: Colors.redAccent),
-              label: const Text("End Shift"),
+            Padding(
+              padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+              child: ElevatedButton.icon(
+                onPressed: _handleEndShift,
+                icon: const Icon(Icons.stop, size: 18),
+                label: const Text("End Shift"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
             ),
-          TextButton.icon(
-            onPressed: _handleLogout,
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
-            label: const Text("Logout"),
-          ),
         ],
       ),
       body: Container(

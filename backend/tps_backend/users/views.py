@@ -243,17 +243,14 @@ class PasswordResetConfirmView(APIView):
 
 from rest_framework.permissions import IsAuthenticated
 
-def _ensure_controller(user):
-    # controller / manager / superuser 
-    return hasattr(user, "is_controller") and user.is_controller()
-
 class CurrentShiftView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
-        if not _ensure_controller(user):
-            return Response({"detail": "Permission denied (Not a Controller)."}, status=status.HTTP_403_FORBIDDEN)
+        # Check if user is controller, manager, or superuser
+        if user.role not in ['controller', 'manager', 'superuser']:
+            return Response({"detail": "Permission denied. Only controllers, managers, and superusers can access shifts."}, status=status.HTTP_403_FORBIDDEN)
 
         shift = Shift.objects.filter(officer=user, status="OPEN").order_by("-start_time").first()
         if not shift:
@@ -266,15 +263,20 @@ class StartShiftView(APIView):
 
     def post(self, request):
         user = request.user
-        if not _ensure_controller(user):
-            return Response({"detail": "Permission denied (Not a Controller)."}, status=status.HTTP_403_FORBIDDEN)
+        # Check if user is controller, manager, or superuser
+        if user.role not in ['controller', 'manager', 'superuser']:
+            return Response({"detail": "Permission denied. Only controllers, managers, and superusers can start shifts."}, status=status.HTTP_403_FORBIDDEN)
 
-        # 如果已有 OPEN shift，则直接返回（避免重复创建）
+        # If there's already an OPEN shift, return it
         existing = Shift.objects.filter(officer=user, status="OPEN").order_by("-start_time").first()
         if existing:
             return Response(ShiftSerializer(existing).data, status=status.HTTP_200_OK)
 
-        shift = Shift.objects.create(officer=user, start_time=timezone.now(), status="OPEN")
+        # Normalize start time to the beginning of the current second
+        now = timezone.now()
+        normalized_start = now.replace(microsecond=0)
+        
+        shift = Shift.objects.create(officer=user, start_time=normalized_start, status="OPEN")
         return Response(ShiftSerializer(shift).data, status=status.HTTP_201_CREATED)
 
 class EndShiftView(APIView):
@@ -282,8 +284,9 @@ class EndShiftView(APIView):
 
     def post(self, request):
         user = request.user
-        if not _ensure_controller(user):
-            return Response({"detail": "Permission denied (Not a Controller)."}, status=status.HTTP_403_FORBIDDEN)
+        # Check if user is controller, manager, or superuser
+        if user.role not in ['controller', 'manager', 'superuser']:
+            return Response({"detail": "Permission denied. Only controllers, managers, and superusers can end shifts."}, status=status.HTTP_403_FORBIDDEN)
 
         shift_id = request.data.get("shift_id", None)
 
@@ -309,3 +312,83 @@ class EndShiftView(APIView):
             },
             status=status.HTTP_200_OK
         )
+
+
+class ShiftHistoryView(APIView):
+    """Get shift history for the authenticated controller"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        # Check if user is controller, manager, or superuser
+        if user.role not in ['controller', 'manager', 'superuser']:
+            return Response(
+                {"detail": "Permission denied. Only controllers, managers, and superusers can view shift history."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get all shifts for this officer, ordered by most recent
+        shifts = Shift.objects.filter(officer=user).order_by("-start_time")
+        
+        # Optional: Add pagination or limit
+        limit = request.query_params.get('limit', None)
+        if limit:
+            try:
+                shifts = shifts[:int(limit)]
+            except ValueError:
+                pass
+
+        serializer = ShiftSerializer(shifts, many=True)
+        return Response({"shifts": serializer.data}, status=status.HTTP_200_OK)
+
+class ActiveOfficersView(APIView):
+    """Get active officers (with OPEN shifts) filtered by city"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # Only managers and superusers can view active officers
+        if user.role not in ['manager', 'superuser']:
+            return Response(
+                {"detail": "Permission denied. Only managers and superusers can view active officers."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get city filter from query params
+        city = request.query_params.get('city', None)
+        
+        if not city:
+            return Response(
+                {"detail": "City parameter is required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get all officers with OPEN shifts who have access to this city
+        active_shifts = Shift.objects.filter(
+            status="OPEN"
+        ).select_related('officer')
+        
+        # Filter officers who have permission for this city
+        active_officers = []
+        for shift in active_shifts:
+            officer = shift.officer
+            
+            # Superusers and officers with this city in allowed_cities
+            if officer.is_superuser or (officer.allowed_cities and city in officer.allowed_cities):
+                active_officers.append({
+                    'id': officer.id,
+                    'email': officer.email,
+                    'first_name': officer.first_name,
+                    'last_name': officer.last_name,
+                    'role': officer.role,
+                    'shift_id': shift.id,
+                    'shift_start': shift.start_time,
+                    'shift_duration_seconds': int((timezone.now() - shift.start_time).total_seconds())
+                })
+        
+        return Response({
+            'city': city,
+            'active_officers': active_officers,
+            'count': len(active_officers)
+        }, status=status.HTTP_200_OK)

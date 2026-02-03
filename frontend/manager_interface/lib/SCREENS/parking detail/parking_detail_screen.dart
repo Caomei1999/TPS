@@ -305,6 +305,7 @@ class _ParkingDetailScreenState extends State<ParkingDetailScreen> {
         builder: (_) => LiveMonitorScreen(
           parkingId: parking!.id,
           parkingName: parking!.name,
+          parkingCity: parking!.city,
         ),
       ),
     ).then((_) => _loadDashboardData());
