@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:manager_interface/models/parking.dart';
 import 'package:manager_interface/services/parking_service.dart';
+import 'package:manager_interface/SERVICES/user_session.dart';
 
 Future<Parking?> showAddParkingDialog(
   BuildContext context, {
@@ -15,9 +16,30 @@ Future<Parking?> showAddParkingDialog(
   final newCityController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
-  final cityOptions = ['New City...', ...existingCities];
+  final session = UserSession();
+  final isSuperAdmin = session.isSuperAdmin;
+  final myAllowedCities = session.allowedCities;
 
-  String selectedCityOption = cityOptions.first;
+  List<String> displayOptions = [];
+
+  if (isSuperAdmin) {
+    final allSuggestions = {
+      ...existingCities,
+      'Milano',
+      'Roma',
+      'Torino',
+    }.toList();
+    allSuggestions.sort();
+
+    displayOptions = ['New City...', ...allSuggestions];
+  } else {
+    displayOptions = myAllowedCities;
+  }
+
+  String selectedCityOption = displayOptions.isNotEmpty
+      ? displayOptions.first
+      : '';
+
   bool isLoading = false;
   
   // Polygon coordinates list
@@ -28,28 +50,49 @@ Future<Parking?> showAddParkingDialog(
     builder: (context) {
       return StatefulBuilder(
         builder: (BuildContext context, StateSetter setState) {
-
           void handleSave() async {
             if (!formKey.currentState!.validate()) return;
-            
-            if (selectedCityOption == 'New City...' && newCityController.text.isEmpty) {
+
+            if (!isSuperAdmin && displayOptions.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please select or enter a new city name.')),
+                const SnackBar(
+                  content: Text(
+                    'Error: No city permissions assigned to your account.',
+                  ),
+                ),
               );
               return;
             }
 
+            if (isSuperAdmin &&
+                selectedCityOption == 'New City...' &&
+                newCityController.text.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please select or enter a new city name.'),
+                ),
+              );
+              return;
+            }
+            // ----------------
+
             setState(() => isLoading = true);
 
-            final finalCity = (selectedCityOption != 'New City...' 
-                              ? selectedCityOption 
-                              : newCityController.text.trim());
+            String finalCity;
+            if (isSuperAdmin) {
+              finalCity = (selectedCityOption != 'New City...'
+                  ? selectedCityOption
+                  : newCityController.text.trim());
+            } else {
+              finalCity = selectedCityOption;
+            }
 
             final newParkingData = Parking(
               id: 0,
               name: nameController.text,
               city: finalCity,
               address: addressController.text,
+<<<<<<< HEAD
               ratePerHour: 2.5,
               totalSpots: int.parse(totalSpotsController.text), 
               occupiedSpots: 0,
@@ -65,6 +108,26 @@ Future<Parking?> showAddParkingDialog(
             try {
               final savedParking = await ParkingService.saveParking(newParkingData);
               
+=======
+              totalSpots: int.parse(totalSpotsController.text),
+              occupiedSpots: 0,
+              // NUOVI CAMPI INIZIALIZZATI
+              todayEntries: 0,
+              todayRevenue: 0.0,
+
+              latitude: double.tryParse(latController.text),
+              longitude: double.tryParse(lngController.text),
+              tariffConfigJson: Parking.defaultTariffConfig.toJson(),
+            );
+
+            try {
+              // 1. Salva il parcheggio
+              final savedParking = await ParkingService.saveParking(
+                newParkingData,
+              );
+
+              // 2. Crea i posti (Logica originale mantenuta)
+>>>>>>> 4353206fcf0d41e72df53018842954601c19e308
               final int spotsToCreate = int.parse(totalSpotsController.text);
 
               if (spotsToCreate > 0) {
@@ -80,10 +143,16 @@ Future<Parking?> showAddParkingDialog(
                 name: savedParking.name,
                 city: savedParking.city,
                 address: savedParking.address,
+<<<<<<< HEAD
                 ratePerHour: savedParking.ratePerHour,
                 totalSpots: spotsToCreate, 
                 occupiedSpots: 0,
                 todayEntries: 0, 
+=======
+                totalSpots: spotsToCreate,
+                occupiedSpots: 0,
+                todayEntries: 0,
+>>>>>>> 4353206fcf0d41e72df53018842954601c19e308
                 todayRevenue: 0.0,
                 latitude: savedParking.latitude,
                 longitude: savedParking.longitude,
@@ -98,7 +167,10 @@ Future<Parking?> showAddParkingDialog(
             } catch (e) {
               setState(() => isLoading = false);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error creating parking: $e'), backgroundColor: Colors.red),
+                SnackBar(
+                  content: Text('Error creating parking: $e'),
+                  backgroundColor: Colors.red,
+                ),
               );
             }
           }
@@ -229,8 +301,13 @@ Future<Parking?> showAddParkingDialog(
 
           return Dialog(
             backgroundColor: Colors.transparent,
+<<<<<<< HEAD
             child: ConstrainedBox( 
               constraints: const BoxConstraints(maxWidth: 700),
+=======
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+>>>>>>> 4353206fcf0d41e72df53018842954601c19e308
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -244,7 +321,11 @@ Future<Parking?> showAddParkingDialog(
                   ),
                   borderRadius: BorderRadius.circular(25),
                   boxShadow: const [
-                    BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
                   ],
                 ),
                 child: Form(
@@ -263,12 +344,19 @@ Future<Parking?> showAddParkingDialog(
                         ),
                         const SizedBox(height: 20),
 
-                        // City Selection
+                        // City Information Header
                         Row(
                           children: [
-                            Expanded(child: Container(height: 1, color: Colors.white30)),
+                            Expanded(
+                              child: Container(
+                                height: 1,
+                                color: Colors.white30,
+                              ),
+                            ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                              ),
                               child: Text(
                                 'City Information',
                                 style: GoogleFonts.poppins(
@@ -278,32 +366,119 @@ Future<Parking?> showAddParkingDialog(
                                 ),
                               ),
                             ),
-                            Expanded(child: Container(height: 1, color: Colors.white30)),
+                            Expanded(
+                              child: Container(
+                                height: 1,
+                                color: Colors.white30,
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        
-                        _buildCitySelector(
-                          selectedCityOption,
-                          cityOptions,
-                          (String? newValue) {
-                            setState(() {
-                              selectedCityOption = newValue!;
-                            });
-                          },
-                        ),
-                        if (selectedCityOption == 'New City...') ...[
+
+                        // === LOGICA UI SELEZIONE CITTÀ ===
+                        if (displayOptions.isEmpty)
+                          // Caso limite: Manager senza città assegnate
+                          Container(
+                            padding: const EdgeInsets.all(15),
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(
+                                color: Colors.redAccent.withOpacity(0.5),
+                              ),
+                            ),
+                            child: Text(
+                              "No city permissions found for this account.",
+                              style: GoogleFonts.poppins(
+                                color: Colors.redAccent,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          )
+                        else if (!isSuperAdmin && displayOptions.length == 1)
+                          // Caso Manager con 1 sola città: Mostra solo testo (Lock)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 15,
+                              vertical: 15,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_city,
+                                  color: Colors.greenAccent,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  displayOptions.first,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const Spacer(),
+                                const Icon(
+                                  Icons.lock_outline,
+                                  color: Colors.white30,
+                                  size: 18,
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          // Caso SuperAdmin O Manager con più città: Mostra Dropdown
+                          _buildCitySelector(
+                            selectedCityOption,
+                            displayOptions,
+                            (String? newValue) {
+                              setState(() {
+                                selectedCityOption = newValue!;
+                              });
+                            },
+                          ),
+
+                        // Mostra input "New City Name" SOLO se SuperUser ha scelto "New City..."
+                        if (isSuperAdmin &&
+                            selectedCityOption == 'New City...') ...[
                           const SizedBox(height: 16),
-                          _buildStyledTextField(newCityController, 'New City Name', false, isEnabled: !isLoading),
+                          _buildStyledTextField(
+                            newCityController,
+                            'New City Name',
+                            false,
+                            isEnabled: !isLoading,
+                          ),
                         ],
+
                         const SizedBox(height: 20),
                         Container(height: 1, color: Colors.white30),
                         const SizedBox(height: 20),
 
-                        _buildStyledTextField(nameController, 'Parking Name', false, isEnabled: !isLoading),
+                        _buildStyledTextField(
+                          nameController,
+                          'Parking Name',
+                          false,
+                          isEnabled: !isLoading,
+                        ),
                         const SizedBox(height: 16),
-                        _buildStyledTextField(addressController, 'Address', false, isEnabled: !isLoading),
+                        _buildStyledTextField(
+                          addressController,
+                          'Address',
+                          false,
+                          isEnabled: !isLoading,
+                        ),
                         const SizedBox(height: 16),
+<<<<<<< HEAD
                         _buildStyledTextField(totalSpotsController, 'Total Spots', true, isEnabled: !isLoading),
                         const SizedBox(height: 16),
                         Row(
@@ -311,6 +486,36 @@ Future<Parking?> showAddParkingDialog(
                             Expanded(child: _buildStyledTextField(latController, 'Center Latitude', true, isEnabled: !isLoading)),
                             const SizedBox(width: 10),
                             Expanded(child: _buildStyledTextField(lngController, 'Center Longitude', true, isEnabled: !isLoading)),
+=======
+
+                        _buildStyledTextField(
+                          totalSpotsController,
+                          'Total Spots',
+                          true,
+                          isEnabled: !isLoading,
+                        ),
+
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildStyledTextField(
+                                latController,
+                                'Latitude',
+                                true,
+                                isEnabled: !isLoading,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildStyledTextField(
+                                lngController,
+                                'Longitude',
+                                true,
+                                isEnabled: !isLoading,
+                              ),
+                            ),
+>>>>>>> 4353206fcf0d41e72df53018842954601c19e308
                           ],
                         ),
                         
@@ -383,11 +588,19 @@ Future<Parking?> showAddParkingDialog(
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.black,
                             minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
                           ),
                           child: isLoading
                               ? const CircularProgressIndicator()
-                              : const Text('Save', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              : const Text(
+                                  'Save',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
                         ),
                       ],
                     ),
@@ -402,16 +615,28 @@ Future<Parking?> showAddParkingDialog(
   );
 }
 
+<<<<<<< HEAD
 Widget _buildStyledTextField(TextEditingController controller, String label, bool isNumber, {bool isEnabled = true}) {
+=======
+Widget _buildStyledTextField(
+  TextEditingController controller,
+  String label,
+  bool isNumber, {
+  bool isEnabled = true,
+}) {
+>>>>>>> 4353206fcf0d41e72df53018842954601c19e308
   return TextFormField(
     controller: controller,
     enabled: isEnabled,
-    keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+    keyboardType: isNumber
+        ? const TextInputType.numberWithOptions(decimal: true)
+        : TextInputType.text,
     style: const TextStyle(color: Colors.white),
     cursorColor: Colors.white,
     validator: (value) {
       if (value == null || value.isEmpty) return 'Required';
-      if (isNumber && double.tryParse(value.replaceAll(',', '.')) == null) return 'Invalid';
+      if (isNumber && double.tryParse(value.replaceAll(',', '.')) == null)
+        return 'Invalid';
       return null;
     },
     decoration: InputDecoration(
@@ -431,29 +656,39 @@ Widget _buildStyledTextField(TextEditingController controller, String label, boo
   );
 }
 
-Widget _buildCitySelector(String selectedValue, List<String> items, ValueChanged<String?> onChanged) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white.withOpacity(0.3)),
+Widget _buildCitySelector(
+  String selectedValue,
+  List<String> items,
+  ValueChanged<String?> onChanged,
+) {
+  // Assicura che selectedValue sia presente nella lista items
+  // Se non c'è (caso raro di desincronizzazione), fallback sul primo elemento
+  final validValue = items.contains(selectedValue)
+      ? selectedValue
+      : items.first;
+
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 15),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: Colors.white.withOpacity(0.3)),
+    ),
+    child: DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: validValue,
+        isExpanded: true,
+        dropdownColor: const Color.fromARGB(255, 52, 12, 108),
+        style: GoogleFonts.poppins(color: Colors.white, fontSize: 16),
+        icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
+        onChanged: onChanged,
+        items: items.map<DropdownMenuItem<String>>((String value) {
+          return DropdownMenuItem<String>(
+            value: value,
+            child: Text(value, style: GoogleFonts.poppins()),
+          );
+        }).toList(),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: selectedValue,
-          isExpanded: true,
-          dropdownColor: const Color.fromARGB(255, 52, 12, 108),
-          style: GoogleFonts.poppins(color: Colors.white, fontSize: 16),
-          icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
-          onChanged: onChanged,
-          items: items.map<DropdownMenuItem<String>>((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value, style: GoogleFonts.poppins()),
-            );
-          }).toList(),
-        ),
-      ),
-    );
+    ),
+  );
 }

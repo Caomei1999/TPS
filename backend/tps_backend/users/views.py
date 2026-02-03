@@ -17,17 +17,23 @@ from .serializers import (
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
+from .models import Shift
+from .serializers import ShiftSerializer
+from django.utils import timezone
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
         token['role'] = user.role 
+        token['allowed_cities'] = user.allowed_cities if user.allowed_cities else []
         return token
 
     def validate(self, attrs):
         data = super().validate(attrs)
         data['role'] = self.user.role 
+        data['allowed_cities'] = self.user.allowed_cities if self.user.allowed_cities else []
         return data
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -232,3 +238,74 @@ class PasswordResetConfirmView(APIView):
             serializer.save()
             return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+from rest_framework.permissions import IsAuthenticated
+
+def _ensure_controller(user):
+    # controller / manager / superuser 
+    return hasattr(user, "is_controller") and user.is_controller()
+
+class CurrentShiftView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not _ensure_controller(user):
+            return Response({"detail": "Permission denied (Not a Controller)."}, status=status.HTTP_403_FORBIDDEN)
+
+        shift = Shift.objects.filter(officer=user, status="OPEN").order_by("-start_time").first()
+        if not shift:
+            return Response({"active": False, "shift": None}, status=status.HTTP_200_OK)
+
+        return Response({"active": True, "shift": ShiftSerializer(shift).data}, status=status.HTTP_200_OK)
+
+class StartShiftView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if not _ensure_controller(user):
+            return Response({"detail": "Permission denied (Not a Controller)."}, status=status.HTTP_403_FORBIDDEN)
+
+        # 如果已有 OPEN shift，则直接返回（避免重复创建）
+        existing = Shift.objects.filter(officer=user, status="OPEN").order_by("-start_time").first()
+        if existing:
+            return Response(ShiftSerializer(existing).data, status=status.HTTP_200_OK)
+
+        shift = Shift.objects.create(officer=user, start_time=timezone.now(), status="OPEN")
+        return Response(ShiftSerializer(shift).data, status=status.HTTP_201_CREATED)
+
+class EndShiftView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if not _ensure_controller(user):
+            return Response({"detail": "Permission denied (Not a Controller)."}, status=status.HTTP_403_FORBIDDEN)
+
+        shift_id = request.data.get("shift_id", None)
+
+        if shift_id:
+            shift = Shift.objects.filter(id=shift_id, officer=user).first()
+        else:
+            shift = Shift.objects.filter(officer=user, status="OPEN").order_by("-start_time").first()
+
+        if not shift:
+            return Response({"detail": "No active shift found."}, status=status.HTTP_404_NOT_FOUND)
+
+        shift.close()
+
+        duration_seconds = None
+        if shift.end_time and shift.start_time:
+            duration_seconds = int((shift.end_time - shift.start_time).total_seconds())
+
+        return Response(
+            {
+                "message": "Shift ended.",
+                "shift": ShiftSerializer(shift).data,
+                "duration_seconds": duration_seconds,
+            },
+            status=status.HTTP_200_OK
+        )

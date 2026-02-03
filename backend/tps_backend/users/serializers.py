@@ -112,3 +112,13 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user.set_password(new_password)
         user.save()
         return user
+    
+
+# users/serializers.py
+from .models import Shift
+
+class ShiftSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Shift
+        fields = ("id", "officer", "start_time", "end_time", "status", "created_at")
+        read_only_fields = fields

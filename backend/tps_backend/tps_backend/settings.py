@@ -217,6 +217,11 @@ UNFOLD = {
                         "title": "Users",
                         "link": reverse_lazy("admin:users_customuser_changelist"),
                     },
+                    {
+                        "title": "Officer Shifts",
+                        "link": reverse_lazy("admin:users_shift_changelist"),
+                        "permission": lambda request: request.user.is_superuser,
+                    },
                 ],
             },
             {

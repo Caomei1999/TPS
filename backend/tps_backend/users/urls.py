@@ -12,6 +12,7 @@ from .views import (
     PasswordResetConfirmView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
+from .views import StartShiftView, EndShiftView, CurrentShiftView
 
 urlpatterns = [
     # Registration endpoint
@@ -35,4 +36,8 @@ urlpatterns = [
     # Password Reset Endpoints
     path('password-reset-request/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password-reset-confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+
+    path('shifts/current/', CurrentShiftView.as_view(), name='current_shift'),
+    path('shifts/start/', StartShiftView.as_view(), name='start_shift'),
+    path('shifts/end/', EndShiftView.as_view(), name='end_shift'),
 ]
