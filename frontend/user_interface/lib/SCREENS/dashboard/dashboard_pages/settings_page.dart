@@ -73,11 +73,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void _showChangePasswordDialog() {
     final TextEditingController oldPassController = TextEditingController();
     final TextEditingController newPassController = TextEditingController();
+    final TextEditingController confirmPassController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) {
         bool isLoading = false;
+        bool showOldPassword = false;
+        bool showNewPassword = false;
+        bool showConfirmPassword = false;
+        String? oldPasswordError;
+        String? newPasswordError;
+        String? confirmPasswordError;
 
         return StatefulBuilder(
           builder: (context, setStateDialog) {
@@ -96,215 +103,294 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   borderRadius: BorderRadius.circular(25),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Change Password',
-                      style: GoogleFonts.poppins(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildStyledTextField(
-                      controller: oldPassController,
-                      label: 'Current Password',
-                    ),
-                    const SizedBox(height: 16),
-                    _buildStyledTextField(
-                      controller: newPassController,
-                      label: 'New Password',
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: isLoading
-                          ? null
-                          : () async {
-                              final oldPass = oldPassController.text;
-                              final newPass = newPassController.text;
-
-                              if (oldPass.isEmpty || newPass.isEmpty) return;
-
-                              setStateDialog(() => isLoading = true);
-
-                              final success = await _userService.changePassword(
-                                oldPassword: oldPass,
-                                newPassword: newPass,
-                              );
-
-                              if (ctx.mounted) {
-                                setStateDialog(() => isLoading = false);
-                                if (success) {
-                                  Navigator.pop(ctx);
-                                }
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.black,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Text(
-                              'Update',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Change Password',
+                            style: GoogleFonts.poppins(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.poppins(color: Colors.white70),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white70),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+                      const SizedBox(height: 20),
+                      // Current Password Field
+                      _buildPasswordField(
+                        controller: oldPassController,
+                        label: 'Current Password',
+                        showPassword: showOldPassword,
+                        errorText: oldPasswordError,
+                        onToggleVisibility: () {
+                          setStateDialog(() => showOldPassword = !showOldPassword);
+                        },
+                        onChanged: (value) {
+                          if (oldPasswordError != null) {
+                            setStateDialog(() => oldPasswordError = null);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // New Password Field
+                      _buildPasswordField(
+                        controller: newPassController,
+                        label: 'New Password',
+                        showPassword: showNewPassword,
+                        errorText: newPasswordError,
+                        onToggleVisibility: () {
+                          setStateDialog(() => showNewPassword = !showNewPassword);
+                        },
+                        onChanged: (value) {
+                          if (newPasswordError != null) {
+                            setStateDialog(() => newPasswordError = null);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // Confirm New Password Field
+                      _buildPasswordField(
+                        controller: confirmPassController,
+                        label: 'Confirm New Password',
+                        showPassword: showConfirmPassword,
+                        errorText: confirmPasswordError,
+                        onToggleVisibility: () {
+                          setStateDialog(() => showConfirmPassword = !showConfirmPassword);
+                        },
+                        onChanged: (value) {
+                          if (confirmPasswordError != null) {
+                            setStateDialog(() => confirmPasswordError = null);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Password must be at least 8 characters',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white38,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      // Update Button
+                      ElevatedButton(
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                final oldPass = oldPassController.text.trim();
+                                final newPass = newPassController.text.trim();
+                                final confirmPass = confirmPassController.text.trim();
 
-  void _showDeleteAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        bool isConfirmingDelete = false;
+                                // Validation
+                                bool hasError = false;
 
-        return StatefulBuilder(
-          builder: (context, setStateDialog) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Color.fromARGB(255, 52, 12, 108),
-                      Color.fromARGB(255, 2, 11, 60),
+                                if (oldPass.isEmpty) {
+                                  setStateDialog(() {
+                                    oldPasswordError = 'Current password is required';
+                                    hasError = true;
+                                  });
+                                }
+
+                                if (newPass.isEmpty) {
+                                  setStateDialog(() {
+                                    newPasswordError = 'New password is required';
+                                    hasError = true;
+                                  });
+                                } else if (newPass.length < 8) {
+                                  setStateDialog(() {
+                                    newPasswordError = 'Password must be at least 8 characters';
+                                    hasError = true;
+                                  });
+                                } else if (newPass == oldPass) {
+                                  setStateDialog(() {
+                                    newPasswordError = 'New password must be different';
+                                    hasError = true;
+                                  });
+                                }
+
+                                if (confirmPass.isEmpty) {
+                                  setStateDialog(() {
+                                    confirmPasswordError = 'Please confirm your password';
+                                    hasError = true;
+                                  });
+                                } else if (newPass != confirmPass) {
+                                  setStateDialog(() {
+                                    confirmPasswordError = 'Passwords do not match';
+                                    hasError = true;
+                                  });
+                                }
+
+                                if (hasError) return;
+
+                                // Show confirmation dialog with logout warning
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (confirmCtx) => AlertDialog(
+                                    backgroundColor: const Color(0xFF020B3C),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    title: Row(
+                                      children: [
+                                        const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 28),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'Confirm Password Change',
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Are you sure you want to change your password?',
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w500,
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.logout, color: Colors.amber, size: 20),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: Text(
+                                                  'You will be logged out and redirected to the login page.',
+                                                  style: GoogleFonts.poppins(
+                                                    color: Colors.amber,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                    height: 1.4,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'You will need to log in again with your new password.',
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.white60,
+                                            fontSize: 12,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(confirmCtx, false),
+                                        child: Text(
+                                          'Cancel',
+                                          style: GoogleFonts.poppins(color: Colors.white54),
+                                        ),
+                                      ),
+                                      FilledButton(
+                                        onPressed: () => Navigator.pop(confirmCtx, true),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: Colors.greenAccent,
+                                        ),
+                                        child: Text(
+                                          'Change Password',
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirmed != true) return;
+
+                                setStateDialog(() => isLoading = true);
+
+                                final success = await _userService.changePassword(
+                                  oldPassword: oldPass,
+                                  newPassword: newPass,
+                                );
+
+                                if (ctx.mounted) {
+                                  setStateDialog(() => isLoading = false);
+                                  if (success) {
+                                    Navigator.pop(ctx);
+                                    // Log out and redirect to login
+                                    await _storageService.deleteTokens();
+                                    if (this.mounted) {
+                                      Navigator.of(this.context).pushAndRemoveUntil(
+                                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                        (Route<dynamic> route) => false,
+                                      );
+                                    }
+                                  } else {
+                                    setStateDialog(() {
+                                      oldPasswordError = 'Incorrect current password';
+                                    });
+                                  }
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.black,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                'Update Password',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.poppins(color: Colors.white70),
+                        ),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        IconlyBold.danger,
-                        color: Colors.redAccent,
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      isConfirmingDelete
-                          ? 'Final Confirmation'
-                          : 'Delete Account',
-                      style: GoogleFonts.poppins(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      isConfirmingDelete
-                          ? 'Clicking delete again will permanently erase all your data.'
-                          : 'Are you sure you want to delete your account?',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
-                        color: Colors.white70,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    TextButton(
-                      onPressed: () {
-                        if (!isConfirmingDelete) {
-                          setStateDialog(() {
-                            isConfirmingDelete = true;
-                          });
-                        } else {
-                          Navigator.pop(ctx);
-                          _handleDeleteAccount();
-                        }
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        side: isConfirmingDelete
-                            ? const BorderSide(color: Colors.red, width: 2)
-                            : BorderSide.none,
-
-                        backgroundColor: isConfirmingDelete
-                            ? Colors.red.withOpacity(0.1)
-                            : Colors.transparent,
-                      ),
-                      child: Text(
-                        isConfirmingDelete
-                            ? 'Yes, Delete Everything!'
-                            : 'Delete Forever',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.redAccent,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    ElevatedButton(
-                      autofocus: true,
-                      onPressed: () => Navigator.pop(ctx),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             );
@@ -314,27 +400,55 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget _buildStyledTextField({
+  Widget _buildPasswordField({
     required TextEditingController controller,
     required String label,
+    required bool showPassword,
+    required VoidCallback onToggleVisibility,
+    String? errorText,
+    ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       controller: controller,
-      obscureText: true,
+      obscureText: !showPassword,
       style: const TextStyle(color: Colors.white, fontSize: 18),
       cursorColor: Colors.white,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
+        errorText: errorText,
+        errorStyle: GoogleFonts.poppins(color: Colors.redAccent, fontSize: 12),
         filled: true,
         fillColor: Colors.white.withOpacity(0.1),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+          borderSide: BorderSide(
+            color: errorText != null 
+                ? Colors.redAccent 
+                : Colors.white.withOpacity(0.3),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: Colors.white),
+          borderSide: BorderSide(
+            color: errorText != null ? Colors.redAccent : Colors.white,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Colors.redAccent),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+        suffixIcon: IconButton(
+          icon: Icon(
+            showPassword ? Icons.visibility_off : Icons.visibility,
+            color: Colors.white54,
+          ),
+          onPressed: onToggleVisibility,
         ),
       ),
     );
@@ -370,27 +484,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 10),
-                _buildSectionHeader('Account'),
-                const SizedBox(height: 15),
-                _buildSettingsTile(
-                  context,
-                  icon: IconlyBold.profile,
-                  title: 'Edit Profile',
-                  subtitle: 'Update personal details',
-                  onTap: () {
-                    ref.read(bottomNavIndexProvider.notifier).state = 3;
-                    Navigator.pop(context);
-                  },
-                ),
-                const SizedBox(height: 10),
-                _buildSettingsTile(
-                  context,
-                  icon: IconlyBold.lock,
-                  title: 'Change Password',
-                  subtitle: 'Update your security',
-                  onTap: _showChangePasswordDialog,
-                ),
-                const SizedBox(height: 30),
+                // PREFERENCES SECTION (First)
                 _buildSectionHeader('Preferences'),
                 const SizedBox(height: 15),
                 _buildSwitchTile(
@@ -412,13 +506,34 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   onChanged: _toggleMapStyle,
                 ),
                 const SizedBox(height: 30),
-                _buildSectionHeader('Danger Zone'),
+                // ACCOUNT SECTION (Merged with Danger Zone)
+                _buildSectionHeader('Account'),
                 const SizedBox(height: 15),
-                _buildDangerTile(
+                _buildSettingsTile(
                   context,
-                  icon: IconlyBold.delete,
-                  title: 'Delete Account',
-                  onTap: _showDeleteAccountDialog,
+                  icon: IconlyBold.profile,
+                  title: 'Edit Profile',
+                  subtitle: 'Update personal details',
+                  onTap: () {
+                    ref.read(bottomNavIndexProvider.notifier).state = 3;
+                    Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 10),
+                _buildSettingsTile(
+                  context,
+                  icon: IconlyBold.lock,
+                  title: 'Change Password',
+                  subtitle: 'Update your security',
+                  onTap: _showChangePasswordDialog,
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Divider(
+                    color: Colors.white.withOpacity(0.2),
+                    thickness: 1,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 _buildDangerTile(
@@ -426,6 +541,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   icon: IconlyBold.logout,
                   title: 'Logout',
                   onTap: _handleLogout,
+                ),
+                const SizedBox(height: 10),
+                _buildDangerTile(
+                  context,
+                  icon: IconlyBold.delete,
+                  title: 'Delete Account',
+                  onTap: _showDeleteAccountDialog,
                 ),
               ],
             ),
@@ -574,6 +696,135 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showDeleteAccountDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        bool isConfirmingDelete = false;
+
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      Color.fromARGB(255, 52, 12, 108),
+                      Color.fromARGB(255, 2, 11, 60),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        IconlyBold.danger,
+                        color: Colors.redAccent,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      isConfirmingDelete
+                          ? 'Final Confirmation'
+                          : 'Delete Account',
+                      style: GoogleFonts.poppins(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      isConfirmingDelete
+                          ? 'Clicking delete again will permanently erase all your data.'
+                          : 'Are you sure you want to delete your account?',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white70,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    TextButton(
+                      onPressed: () {
+                        if (!isConfirmingDelete) {
+                          setStateDialog(() {
+                            isConfirmingDelete = true;
+                          });
+                        } else {
+                          Navigator.pop(ctx);
+                          _handleDeleteAccount();
+                        }
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.redAccent,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        side: isConfirmingDelete
+                            ? const BorderSide(color: Colors.red, width: 2)
+                            : BorderSide.none,
+                        backgroundColor: isConfirmingDelete
+                            ? Colors.red.withOpacity(0.1)
+                            : Colors.transparent,
+                      ),
+                      child: Text(
+                        isConfirmingDelete
+                            ? 'Yes, Delete Everything!'
+                            : 'Delete Forever',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    ElevatedButton(
+                      autofocus: true,
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

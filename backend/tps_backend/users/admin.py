@@ -4,26 +4,23 @@ from django import forms
 from django.core.exceptions import ValidationError
 from .models import CustomUser
 
-from parkings.models import Parking 
+from parkings.models import City
 from .models import Shift
 
 
 def get_dynamic_city_choices():
-
-    cities = {'Milano', 'Roma', 'Torino'} 
+    """Get cities from the City model"""
+    cities = set()
     
-  
     try:
-  
-        db_cities = Parking.objects.values_list('city', flat=True).distinct()
+        # Get cities from City model
+        db_cities = City.objects.values_list('name', flat=True)
         for city in db_cities:
-            if city: 
+            if city:
                 cities.add(city)
     except Exception:
-
         pass
-        
-
+    
     return sorted([(c, c) for c in cities])
 
 

@@ -1,0 +1,102 @@
+{% extends "unfold/layouts/base.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    /* Make top bar fixed/absolute */
+    .unfold-header {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Sidebar shares space with body (not overlay) */
+    .unfold-sidebar {
+        position: fixed !important;
+        top: 64px; /* Height of top bar */
+        left: 0;
+        height: calc(100vh - 64px);
+        width: 260px;
+        z-index: 100;
+    }
+
+    /* Main content area adjusted for fixed header and sidebar */
+    .unfold-main {
+        margin-top: 64px !important; /* Top bar height */
+        margin-left: 260px !important; /* Sidebar width */
+        min-height: calc(100vh - 64px);
+        width: calc(100% - 260px) !important;
+    }
+
+    /* Hide all back arrows */
+    .unfold-breadcrumb,
+    a[href*=".."],
+    button[onclick*="history.back"],
+    .back-button {
+        display: none !important;
+    }
+
+    /* Dashboard icon in topbar */
+    .dashboard-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+        color: white;
+        margin-right: 16px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .dashboard-icon:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+    }
+
+    /* Responsive for smaller screens */
+    @media (max-width: 1024px) {
+        .unfold-sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s;
+        }
+        
+        .unfold-sidebar.open {
+            transform: translateX(0);
+        }
+        
+        .unfold-main {
+            margin-left: 0 !important;
+            width: 100% !important;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add dashboard icon to topbar
+        const header = document.querySelector('.unfold-header');
+        if (header && !document.querySelector('.dashboard-icon')) {
+            const dashboardBtn = document.createElement('a');
+            dashboardBtn.href = '/admin/';
+            dashboardBtn.className = 'dashboard-icon';
+            dashboardBtn.innerHTML = '<svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>';
+            dashboardBtn.title = 'Dashboard';
+            
+            // Insert before first child or append
+            const firstChild = header.querySelector('.unfold-header-actions') || header.firstChild;
+            if (firstChild) {
+                header.insertBefore(dashboardBtn, firstChild);
+            } else {
+                header.appendChild(dashboardBtn);
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -43,21 +43,25 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
-    'unfold',  # before django.contrib.admin
-    'unfold.contrib.filters',  # optional, if special filters are needed
+    "unfold",  # Must be before django.contrib.admin
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
+    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'parkings.apps.ParkingsConfig',
-    'users.apps.UsersConfig',
+    
     'rest_framework',
+    'rest_framework_simplejwt',
     'corsheaders',
-    'vehicles.apps.VehiclesConfig',
-    'payments.apps.PaymentsConfig',
-    'django.contrib.postgres',
+    
+    # Your apps
+    'users',
+    'parkings',  # Make sure this is here
+    'vehicles',
 ]
 
 MIDDLEWARE = [
@@ -185,60 +189,91 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
+# Unfold Admin Configuration
 UNFOLD = {
-    "SITE_TITLE": "TPS Admin",
-    "SITE_HEADER": "TPS Management System",
-    "SITE_URL": "/admin/",
-    "DASHBOARD_CALLBACK": "tps_backend.dashboard.dashboard_callback",
-    "STYLES": [
-        lambda request: static("css/admin_custom.css"),
-    ],
+    "SITE_TITLE": None,  # Remove title from sidebar
+    "SITE_HEADER": "TPS Management Dashboard",
+    "SITE_URL": "/",
+    "SITE_ICON": None,
+    
     "SIDEBAR": {
-        "show_search": False,
+        "show_search": True,
         "show_all_applications": False,
+        "show_recent_actions": False,
         "navigation": [
             {
-                "title": "Parking Management",
+                "title": "Infrastructure",
+                "separator": True,
+                "collapsible": True,
                 "items": [
                     {
+                        "title": "Cities",
+                        "icon": "location_city",
+                        "link": lambda request: "/admin/parkings/city/",
+                        "permission": lambda request: request.user.is_superuser,
+                    },
+                    {
                         "title": "Parkings",
-                        "link": reverse_lazy("admin:parkings_parking_changelist"),
+                        "icon": "local_parking",
+                        "link": lambda request: "/admin/parkings/parking/",
                     },
                     {
                         "title": "Spots",
-                        "link": reverse_lazy("admin:parkings_spot_changelist"),
+                        "icon": "grid_on",
+                        "link": lambda request: "/admin/parkings/spot/",
                     },
                 ],
             },
             {
-                "title": "User Management",
+                "title": "Users & Access",
+                "separator": True,
+                "collapsible": True,
                 "items": [
                     {
                         "title": "Users",
-                        "link": reverse_lazy("admin:users_customuser_changelist"),
+                        "icon": "people",
+                        "link": lambda request: "/admin/users/customuser/",
                     },
                     {
-                        "title": "Officer Shifts",
-                        "link": reverse_lazy("admin:users_shift_changelist"),
+                        "title": "Shifts",
+                        "icon": "schedule",
+                        "link": lambda request: "/admin/users/shift/",
                         "permission": lambda request: request.user.is_superuser,
                     },
                 ],
             },
             {
-                "title": "Vehicle Management",
+                "title": "Operations",
+                "separator": True,
+                "collapsible": True,
                 "items": [
                     {
-                        "title": "Parking Sessions",
-                        "link": reverse_lazy("admin:vehicles_parkingsession_changelist"),
+                        "title": "Vehicles",
+                        "icon": "directions_car",
+                        "link": lambda request: "/admin/vehicles/vehicle/",
                     },
                     {
-                        "title": "Vehicles",
-                        "link": reverse_lazy("admin:vehicles_vehicle_changelist"),
+                        "title": "Sessions",
+                        "icon": "access_time",
+                        "link": lambda request: "/admin/vehicles/parkingsession/",
+                    },
+                    {
+                        "title": "Fines",
+                        "icon": "receipt",
+                        "link": lambda request: "/admin/vehicles/fine/",
                     },
                 ],
             },
         ],
     },
+    
+    "STYLES": [
+        lambda request: "/static/css/custom_admin.css",
+    ],
+    
+    "SCRIPTS": [
+        lambda request: "/static/js/custom_admin.js",
+    ],
 }
 
 SIMPLE_JWT = {

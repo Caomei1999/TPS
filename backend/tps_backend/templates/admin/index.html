@@ -1,28 +1,132 @@
 {% extends "unfold/layouts/base_simple.html" %}
-{% load i18n unfold %}
+{% load i18n unfold static %}
 
 {% block breadcrumbs %}{% endblock %}
 
 {% block title %}
-    {% trans "Dashboard" %} | {{ site_title }}
+    TPS Management Dashboard | {{ site_title }}
+{% endblock %}
+
+{% block extrahead %}
+<link rel="stylesheet" href="{% static 'css/custom_admin.css' %}">
+<style>
+    /* Override topbar title */
+    .unfold-header h1 {
+        background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div style="display: flex; align-items: flex-start; justify-content: center; min-height: 60vh; padding-top: 15vh;">
-    <div class="welcome-card text-center">
-        <h1 class="text-5xl font-bold mb-6 text-center" style="background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-            Welcome to TPS Management System
-        </h1>
-        <p class="text-2xl mb-8 text-center">
+<div style="padding: 2rem;">
+    <!-- Welcome Message - Bold & Larger Font -->
+    <div style="margin-bottom: 2.5rem;">
+        <p style="font-size: 2rem; font-weight: 700; color: var(--unfold-color-text-primary);">
             {% if user.first_name %}
-                Hello, <span class="font-semibold" style="color: #8b5cf6;">{{ user.first_name }}</span>!
+                Welcome back, <span style="font-weight: 700; background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">{{ user.first_name }}</span>!
             {% else %}
-                Hello, <span class="font-semibold" style="color: #8b5cf6;">{{ user.email }}</span>!
+                Welcome, <span style="font-weight: 700; background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">{{ user.email }}</span>!
             {% endif %}
         </p>
-        <p class="text-lg opacity-80 text-center">
-            Use the sidebar navigation to manage parkings, users, vehicles, and sessions.
-        </p>
     </div>
+
+    <!-- Statistics Section -->
+    <h2 style="font-size: 1.5rem; font-weight: 400; margin-bottom: 1.5rem; color: var(--unfold-color-text-primary);">
+        Shortcuts
+    </h2>
+    <div class="dashboard-stats">
+        <!-- Total Parkings Card -->
+        <div class="stat-card parkings">
+            <h3>Total Parkings</h3>
+            <div class="number">{{ total_parkings }}</div>
+            <div class="label">Across all cities</div>
+        </div>
+
+        <!-- Total Users Card -->
+        <div class="stat-card users">
+            <h3>Registered Users</h3>
+            <div class="number">{{ total_users }}</div>
+            <div class="label">Active accounts</div>
+        </div>
+
+        <!-- Active Sessions Card -->
+        <div class="stat-card sessions">
+            <h3>Active Sessions</h3>
+            <div class="number">{{ active_sessions }}</div>
+            <div class="label">Currently parking</div>
+        </div>
+
+        <!-- Today's Revenue Card -->
+        <div class="stat-card revenue">
+            <h3>Today's Revenue</h3>
+            <div class="number">€{{ today_revenue|floatformat:2 }}</div>
+            <div class="label">Total earnings</div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Section -->
+    <div style="margin-top: 3rem;">
+        <h2 style="font-size: 1.5rem; font-weight: 400; margin-bottom: 1.5rem; color: var(--unfold-color-text-primary);">
+            Recent Activity
+        </h2>
+        
+        <div style="background: var(--unfold-color-background-card); border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid var(--unfold-color-border);">
+            {% if recent_sessions %}
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--unfold-color-border);">
+                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--unfold-color-text-secondary);">Vehicle</th>
+                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--unfold-color-text-secondary);">Parking</th>
+                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--unfold-color-text-secondary);">Started</th>
+                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--unfold-color-text-secondary);">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in recent_sessions %}
+                        <tr style="border-bottom: 1px solid var(--unfold-color-border);">
+                            <td style="padding: 0.75rem; color: var(--unfold-color-text-primary);">{{ session.vehicle.license_plate }}</td>
+                            <td style="padding: 0.75rem; color: var(--unfold-color-text-primary);">{{ session.parking_lot.name }}</td>
+                            <td style="padding: 0.75rem; color: var(--unfold-color-text-primary);">{{ session.start_time|date:"H:i" }}</td>
+                            <td style="padding: 0.75rem;">
+                                {% if session.is_active %}
+                                    <span style="background: #10b981; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Active</span>
+                                {% else %}
+                                    <span style="background: #6b7280; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Ended</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p style="color: var(--unfold-color-text-secondary); text-align: center; padding: 2rem;">No recent activity</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions Section -->
+    {% if user.is_superuser %}
+    <div style="margin-top: 3rem;">
+        <h2 style="font-size: 1.5rem; font-weight: 400; margin-bottom: 1.5rem; color: var(--unfold-color-text-primary);">
+            Quick Actions
+        </h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <a href="/admin/parkings/parking/add/" style="background: #8b5cf6; color: white; padding: 1rem; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(139, 92, 246, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(139, 92, 246, 0.3)'">
+                + Add Parking
+            </a>
+            <a href="/admin/parkings/city/add/" style="background: #3b82f6; color: white; padding: 1rem; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)'">
+                + Add City
+            </a>
+            <a href="/admin/users/customuser/add/" style="background: #ec4899; color: white; padding: 1rem; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(236, 72, 153, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(236, 72, 153, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(236, 72, 153, 0.3)'">
+                + Add User
+            </a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -12,9 +12,25 @@ DEFAULT_TARIFF_JSON = """{
     "flex_rules": []
 }"""
 
+class City(models.Model):
+    """
+    Master list of cities - only modifiable by superusers
+    """
+    name = models.CharField(max_length=100, unique=True)
+    country = models.CharField(max_length=100, default='Italy')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'City'
+        verbose_name_plural = 'Cities'
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name}, {self.country}"
+
 class Parking(models.Model):
     name = models.CharField(max_length=100)
-    city = models.CharField(max_length=50)
+    city = models.CharField(max_length=50)  # Keep as CharField for backward compatibility
     address = models.CharField(max_length=150)
     
     rate_per_hour = models.DecimalField(max_digits=6, decimal_places=2, default=2.5) 

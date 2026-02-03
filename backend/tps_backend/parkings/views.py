@@ -1,12 +1,12 @@
 from rest_framework import viewsets, permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.db.models import Count, Q, OuterRef, Subquery, IntegerField, DecimalField, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from decimal import Decimal
 
-from .models import Parking, Spot
+from .models import Parking, Spot, City
 from .serializers import ParkingSerializer, SpotSerializer
 from vehicles.models import ParkingSession
 from vehicles.serializers import ParkingSessionSerializer
@@ -138,3 +138,31 @@ class SpotViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save()
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def get_cities_list(request):
+    """
+    Returns list of cities based on user role:
+    - Superusers: all cities from City model
+    - Managers: only their allowed_cities
+    - Others: all cities (for public access)
+    """
+    user = request.user
+    
+    if user.is_superuser:
+        # Superusers see all cities from the City model
+        cities = City.objects.values_list('name', flat=True).order_by('name')
+        return Response({'cities': list(cities)})
+    
+    elif hasattr(user, 'role') and user.role == 'manager':
+        # Managers see only their allowed cities
+        allowed = getattr(user, 'allowed_cities', [])
+        if allowed and isinstance(allowed, list):
+            return Response({'cities': sorted(allowed)})
+        return Response({'cities': []})
+    
+    else:
+        # Regular users see all cities
+        cities = City.objects.values_list('name', flat=True).order_by('name')
+        return Response({'cities': list(cities)})

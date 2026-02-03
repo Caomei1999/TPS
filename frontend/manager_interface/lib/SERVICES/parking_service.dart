@@ -11,10 +11,10 @@ class ParkingService {
   static const String _apiRoot = 'http://127.0.0.1:8000/api'; 
 
   static Future<List<String>> getCities() async {
-    final response = await _httpClient.get(Uri.parse('$_apiRoot/parkings/'));
+    final response = await _httpClient.get(Uri.parse('$_apiRoot/cities/'));
     if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      final cities = data.map((p) => p['city'] as String).toSet().toList();
+      final data = json.decode(response.body);
+      final cities = (data['cities'] as List<dynamic>).cast<String>();
       cities.sort();
       return cities;
     } else {
