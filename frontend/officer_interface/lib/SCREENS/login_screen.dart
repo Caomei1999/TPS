@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:officer_interface/MAIN%20UTILS/page_transition.dart'; 
-import 'package:officer_interface/SCREENS/home_screen.dart';
+// import 'package:officer_interface/SCREENS/home_screen.dart';
+import 'package:officer_interface/SCREENS/start_shift_screen.dart';
+
 
 // FIX: Assicurati che questo percorso corrisponda esattamente alla posizione di auth_service.dart
 // Se i tuoi servizi sono in lib/services/auth_service.dart, questa riga è corretta.
@@ -51,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success) {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          slideRoute(const HomeScreen()), 
+          slideRoute(const StartShiftScreen()), 
         );
       }
     } else {
