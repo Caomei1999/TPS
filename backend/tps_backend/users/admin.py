@@ -43,17 +43,21 @@ class CustomUserChangeForm(forms.ModelForm):
 
         if self.instance and self.instance.allowed_cities:
             self.initial['allowed_cities'] = self.instance.allowed_cities
-
+    
     def clean(self):
         cleaned_data = super().clean()
         role = cleaned_data.get('role')
-        cities = cleaned_data.get('allowed_cities')
-
+        cities = cleaned_data.get('allowed_cities') 
         if role in ['manager', 'controller'] and not cities:
             raise ValidationError({
                 'allowed_cities': f"A {role.title()} must be assigned to at least one city."
             })
-            
+
+        if role == 'controller':
+            if cities and len(cities) > 1:
+                raise ValidationError({
+                    'allowed_cities': "Controllers can strictly be assigned to only ONE city."
+                })
         if role not in ['manager', 'controller'] and cities:
             cleaned_data['allowed_cities'] = []
             
@@ -113,12 +117,21 @@ class CustomUserAdmin(ModelAdmin):
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)
 
-    fieldsets = (
-        ('Personal Info', {'fields': ('email', 'first_name', 'last_name', 'role')}),
-        ('Permissions (Managers & Controllers)', {'fields': ('allowed_cities',)}), 
-        ('Status', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
-    )
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = [
+            (None, {'fields': ('email', 'password')}),
+            ('Personal info', {'fields': ('first_name', 'last_name', 'role')}),
+        ]
+        if not obj or obj.role != 'user':
+            fieldsets.append(
+                ('Permissions (Managers & Controllers)', {'fields': ('allowed_cities',)})
+            )
 
+        fieldsets.append(
+            ('Status', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
+        )
+        return fieldsets
+    
     def get_cities_display(self, obj):
         if obj.is_superuser:
             return "🌍 ALL (Superuser)"

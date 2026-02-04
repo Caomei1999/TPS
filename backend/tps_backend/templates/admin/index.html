@@ -39,34 +39,32 @@
     <h2 style="font-size: 1.5rem; font-weight: 400; margin-bottom: 1.5rem; color: var(--unfold-color-text-primary);">
         Shortcuts
     </h2>
-    <div class="dashboard-stats">
-        <!-- Total Parkings Card -->
-        <div class="stat-card parkings">
+    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;">
+        
+        <a href="/admin/parkings/parking/" class="stat-card parkings" style="text-decoration: none; color: white; display: block; height: 100%;">
             <h3>Total Parkings</h3>
             <div class="number">{{ total_parkings }}</div>
             <div class="label">Across all cities</div>
-        </div>
+        </a>
 
-        <!-- Total Users Card -->
-        <div class="stat-card users">
+        <a href="/admin/users/customuser/" class="stat-card users" style="text-decoration: none; color: white; display: block; height: 100%;">
             <h3>Registered Users</h3>
             <div class="number">{{ total_users }}</div>
             <div class="label">Active accounts</div>
-        </div>
+        </a>
 
-        <!-- Active Sessions Card -->
-        <div class="stat-card sessions">
+        <a href="/admin/vehicles/parkingsession/?is_active__exact=1" class="stat-card sessions" style="text-decoration: none; color: white; display: block; height: 100%;">
             <h3>Active Sessions</h3>
             <div class="number">{{ active_sessions }}</div>
             <div class="label">Currently parking</div>
-        </div>
+        </a>
 
-        <!-- Today's Revenue Card -->
-        <div class="stat-card revenue">
+        <a href="/admin/vehicles/parkingsession/" class="stat-card revenue" style="text-decoration: none; color: white; display: block; height: 100%;">
             <h3>Today's Revenue</h3>
             <div class="number">€{{ today_revenue|floatformat:2 }}</div>
             <div class="label">Total earnings</div>
-        </div>
+        </a>
+        
     </div>
 
     <!-- Recent Activity Section -->
