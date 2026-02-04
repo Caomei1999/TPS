@@ -39,7 +39,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
-
 class ManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
     Serializer for manager login - only allows manager role
@@ -62,13 +61,11 @@ class ManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['role'] = user.role
         return token
 
-
 class ManagerTokenObtainPairView(TokenObtainPairView):
     """
     Login endpoint specifically for managers
     """
     serializer_class = ManagerTokenObtainPairSerializer
-
 
 class ControllerTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -92,13 +89,11 @@ class ControllerTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['role'] = user.role
         return token
 
-
 class ControllerTokenObtainPairView(TokenObtainPairView):
     """
     Login endpoint specifically for controllers
     """
     serializer_class = ControllerTokenObtainPairSerializer
-
 
 class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -121,7 +116,6 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token['role'] = user.role
         return token
-
 
 class UserTokenObtainPairView(TokenObtainPairView):
     """
@@ -239,8 +233,6 @@ class PasswordResetConfirmView(APIView):
             return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-
 from rest_framework.permissions import IsAuthenticated
 
 class CurrentShiftView(APIView):
@@ -312,7 +304,6 @@ class EndShiftView(APIView):
             },
             status=status.HTTP_200_OK
         )
-
 
 class ShiftHistoryView(APIView):
     """Get shift history for the authenticated controller"""

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser,Shift
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions
 from django.contrib.auth.tokens import default_token_generator
@@ -56,7 +56,6 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         )
         return user
 
-
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
@@ -112,10 +111,6 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user.set_password(new_password)
         user.save()
         return user
-    
-
-# users/serializers.py
-from .models import Shift
 
 class ShiftSerializer(serializers.ModelSerializer):
     class Meta:

@@ -12,33 +12,9 @@ class ParkingService {
   
   static const String _apiRoot = 'http://127.0.0.1:8000/api'; 
 
-  static Future<List<String>> getCities() async {
-    developer.log('🌐 Fetching cities from: $_apiRoot/cities-list/');
-    final response = await _httpClient.get(Uri.parse('$_apiRoot/cities-list/'));
-    
-    developer.log('📥 Response status: ${response.statusCode}');
-    developer.log('📥 Response body: ${response.body}');
-    
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      developer.log('📊 Parsed data type: ${data.runtimeType}');
-      
-      if (data is Map && data.containsKey('cities')) {
-        final cities = (data['cities'] as List<dynamic>).cast<String>();
-        cities.sort();
-        developer.log('✅ Loaded ${cities.length} cities: $cities');
-        return cities;
-      } else {
-        throw Exception('Unexpected response format: expected Map with "cities" key, got: ${data.runtimeType}');
-      }
-    } else {
-      throw Exception('Failed to load cities: HTTP ${response.statusCode}');
-    }
-  }
-
   static Future<List<City>> getCitiesWithCoordinates() async {
-    developer.log('🌐 Fetching city coordinates from: $_apiRoot/cities/list_with_coordinates/');
-    final url = Uri.parse('$_apiRoot/cities/list_with_coordinates/');
+    developer.log('🌐 Fetching authorized cities from: $_apiRoot/cities/authorized/');
+    final url = Uri.parse('$_apiRoot/cities/authorized/');
     final response = await _httpClient.get(url);
 
     developer.log('📥 Response status: ${response.statusCode}');
@@ -47,10 +23,10 @@ class ParkingService {
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
       final cities = data.map((json) => City.fromJson(json)).toList();
-      developer.log('✅ Loaded ${cities.length} cities with coordinates');
+      developer.log('✅ Loaded ${cities.length} authorized cities');
       return cities;
     } else {
-      throw Exception('Failed to load cities with coordinates: HTTP ${response.statusCode}');
+      throw Exception('Failed to load authorized cities: HTTP ${response.statusCode}');
     }
   }
 

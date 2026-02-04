@@ -8,11 +8,13 @@ import 'package:flutter/services.dart';
 class EditPolygonDialog extends StatefulWidget {
   final List<ParkingCoordinate> initialCoords;
   final LatLng? centerPosition;
+  final LatLng? cityCoordinates;
 
   const EditPolygonDialog({
     super.key,
     required this.initialCoords,
-    this.centerPosition,
+    this.centerPosition, 
+    this.cityCoordinates,
   });
 
   @override
@@ -340,7 +342,7 @@ class _EditPolygonDialogState extends State<EditPolygonDialog> {
     }
     
     if (polygonCoords.isEmpty) {
-      return widget.centerPosition ?? const LatLng(45.0703, 7.6869);
+      return widget.cityCoordinates ?? const LatLng(45.0703, 7.6869);
     }
     
     double sumLat = 0;
@@ -709,14 +711,14 @@ class _EditPolygonDialogState extends State<EditPolygonDialog> {
 
 Future<Map<String, dynamic>?> showEditPolygonDialog(
   BuildContext context, {
-  required List<ParkingCoordinate> initialCoords,
-  LatLng? centerPosition,
+  required List<ParkingCoordinate> initialCoords, LatLng? centerPosition, LatLng? cityCoordinates,
 }) {
   return showDialog<Map<String, dynamic>>(
     context: context,
     builder: (context) => EditPolygonDialog(
       initialCoords: initialCoords,
       centerPosition: centerPosition,
+      cityCoordinates: cityCoordinates,
     ),
   );
 }

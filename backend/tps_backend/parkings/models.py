@@ -17,7 +17,7 @@ class City(models.Model):
     Master list of cities - only modifiable by superusers
     """
     name = models.CharField(max_length=100, unique=True)
-    country = models.CharField(max_length=100, default='Italy')  # Add default
+    country = models.CharField(max_length=100, default='Italy')
     center_latitude = models.FloatField(null=True, blank=True)
     center_longitude = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

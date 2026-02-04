@@ -360,16 +360,18 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _deleteParking(Parking parking) async {
     try {
       await ParkingService.deleteParking(parking.id);
-      setState(() {
-        selectedCityParkings.removeWhere((p) => p.id == parking.id);
-        filteredCityParkings.removeWhere((p) => p.id == parking.id);
-      });
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Parking deleted'),
           backgroundColor: Colors.green,
         ),
       );
+
+      // Reload the city's parkings to update the map markers and polygons
+      if (selectedCity != null) {
+        await _onCitySelected(selectedCity!);
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

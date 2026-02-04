@@ -4,8 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:manager_interface/models/parking.dart';
 import 'package:manager_interface/models/city.dart';
 import 'package:manager_interface/services/parking_service.dart';
-import 'package:manager_interface/SERVICES/user_session.dart';
-import 'package:manager_interface/SCREENS/parking%20detail/utils/edit_polygon_dialog.dart';
+import 'package:manager_interface/MAIN%20UTILS/edit_polygon_dialog.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 
@@ -23,27 +22,11 @@ Future<Parking?> showAddParkingDialog(
   final totalSpotsController = TextEditingController(text: existingParking?.totalSpots.toString() ?? '');
   final latController = TextEditingController(text: existingParking?.latitude?.toStringAsFixed(6) ?? '');
   final lngController = TextEditingController(text: existingParking?.longitude?.toStringAsFixed(6) ?? '');
-  final newCityController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
-  final session = UserSession();
-  final isSuperAdmin = session.isSuperAdmin;
-
   List<String> displayOptions = [];
+  displayOptions = authorizedCities;
 
-  if (isSuperAdmin) {
-    final allSuggestions = {
-      ...authorizedCities,
-      'Milano',
-      'Roma',
-      'Torino',
-    }.toList();
-    allSuggestions.sort();
-
-    displayOptions = ['New City...', ...allSuggestions];
-  } else {
-    displayOptions = authorizedCities;
-  }
 
   String selectedCityOption = displayOptions.isNotEmpty
       ? (existingParking?.city ?? // Use existing city if editing
@@ -345,7 +328,7 @@ Future<Parking?> showAddParkingDialog(
             final position = getInitialMapPosition();
             final zoom = getOptimalZoom();
 
-            Future.delayed(const Duration(milliseconds: 300), () {
+            Future.delayed(const Duration(milliseconds: 100), () {
               mapController?.animateCamera(
                 CameraUpdate.newLatLngZoom(position, zoom),
               );
@@ -355,7 +338,7 @@ Future<Parking?> showAddParkingDialog(
           void handleSave() async {
             if (!formKey.currentState!.validate()) return;
 
-            if (!isSuperAdmin && displayOptions.isEmpty) {
+            if (displayOptions.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
@@ -366,27 +349,9 @@ Future<Parking?> showAddParkingDialog(
               return;
             }
 
-            if (isSuperAdmin &&
-                selectedCityOption == 'New City...' &&
-                newCityController.text.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please select or enter a new city name.'),
-                ),
-              );
-              return;
-            }
-
             setState(() => isLoading = true);
-
-            String finalCity;
-            if (isSuperAdmin) {
-              finalCity = (selectedCityOption != 'New City...'
-                  ? selectedCityOption
-                  : newCityController.text.trim());
-            } else {
-              finalCity = selectedCityOption;
-            }
+            String finalCity = selectedCityOption;
+          
 
             final parkingData = Parking(
               id: existingParking?.id ?? 0, // Use existing ID if editing
@@ -489,10 +454,24 @@ Future<Parking?> showAddParkingDialog(
               centerPos = LatLng(lat, lng);
             }
             
+            // Get selected city coordinates
+            LatLng? selectedCityCoords;
+            if (citiesWithCoordinates != null && selectedCityOption.isNotEmpty) {
+              final city = citiesWithCoordinates.firstWhere(
+                (c) => c.name == selectedCityOption,
+                orElse: () => City(name: '', latitude: null, longitude: null),
+              );
+              
+              if (city.latitude != null && city.longitude != null) {
+                selectedCityCoords = LatLng(city.latitude!, city.longitude!);
+              }
+            }
+            
             final result = await showEditPolygonDialog(
               context,
               initialCoords: polygonCoords,
               centerPosition: centerPos,
+              cityCoordinates: selectedCityCoords, // ADD THIS
             );
             
             if (result != null) {
@@ -633,8 +612,6 @@ Future<Parking?> showAddParkingDialog(
                                   ),
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.location_city, color: Colors.greenAccent),
-                                      const SizedBox(width: 10),
                                       Text(
                                         selectedCityOption,
                                         style: GoogleFonts.poppins(
@@ -648,8 +625,7 @@ Future<Parking?> showAddParkingDialog(
                                     ],
                                   ),
                                 )
-                              else if (!isSuperAdmin && displayOptions.length == 1)
-                                // ...existing single city case...
+                              else 
                               
                                 _buildCitySelector(
                                   selectedCityOption,
@@ -679,16 +655,6 @@ Future<Parking?> showAddParkingDialog(
                                     });
                                   },
                                 ),
-
-                              if (isSuperAdmin && selectedCityOption == 'New City...') ...[
-                                const SizedBox(height: 16),
-                                _buildStyledTextField(
-                                  newCityController,
-                                  'New City Name',
-                                  false,
-                                  isEnabled: !isLoading,
-                                ),
-                              ],
 
                               const SizedBox(height: 20),
                               Container(height: 1, color: Colors.white30),
@@ -871,7 +837,7 @@ Future<Parking?> showAddParkingDialog(
                               ElevatedButton(
                                 onPressed: isLoading ? null : handleSave,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: isEditMode ? Colors.greenAccent : Colors.white,
+                                  backgroundColor: Colors.greenAccent,
                                   foregroundColor: Colors.black,
                                   minimumSize: const Size(double.infinity, 50),
                                   shape: RoundedRectangleBorder(
