@@ -60,8 +60,9 @@ INSTALLED_APPS = [
     
     # Your apps
     'users',
-    'parkings',  # Make sure this is here
+    'parkings',  
     'vehicles',
+    'payments',
 ]
 
 MIDDLEWARE = [

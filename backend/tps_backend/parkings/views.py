@@ -1,3 +1,4 @@
+from os import path
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -61,11 +62,8 @@ class ParkingViewSet(viewsets.ModelViewSet):
         
         user = self.request.user
         
-        
         if user.is_superuser:
             pass 
-
-       
         elif hasattr(user, 'role') and user.role == 'manager':
             allowed = getattr(user, 'allowed_cities', [])
             
@@ -73,9 +71,6 @@ class ParkingViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(city__in=allowed)
             else:
                 queryset = queryset.none()
-        
-        # 3. 普通用户 (User/Driver) & 巡逻员 (Controller/Officer)
-        # 默认允许查看所有公共停车场（或者你可以根据需求在这里加别的逻辑）
         else:
             pass 
 
@@ -90,13 +85,11 @@ class ParkingViewSet(viewsets.ModelViewSet):
         user = self.request.user
         new_city = serializer.validated_data.get('city')
         
-        if not user.is_superuser:
-    
-             if hasattr(user, 'role') and user.role == 'manager':
-                 allowed = getattr(user, 'allowed_cities', [])
-                 if new_city not in allowed:
-                     from rest_framework.exceptions import PermissionDenied
-                     raise PermissionDenied(f"You are not allowed to manage parkings in {new_city}.")
+        if not user.is_superuser and hasattr(user, 'role') and user.role == 'manager':
+            allowed = getattr(user, 'allowed_cities', [])
+            if new_city not in allowed:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied(f"You are not allowed to manage parkings in {new_city}.")
         
         serializer.save()
 
@@ -130,7 +123,6 @@ class SpotViewSet(viewsets.ModelViewSet):
             else:
                 queryset = queryset.none()
 
-
         parking_id = self.request.query_params.get('parking')
         if parking_id:
             queryset = queryset.filter(parking_id=parking_id)
@@ -142,25 +134,73 @@ class SpotViewSet(viewsets.ModelViewSet):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_cities_list(request):
+def get_authorized_cities(request):
     """
-    Returns a simple list of city names from parkings
+    Return only cities that the authenticated manager is authorized to access
+    Uses the allowed_cities field from the User model
     """
-    cities = Parking.objects.values_list('city', flat=True).distinct().order_by('city')
-    return Response({'cities': list(cities)})
+    user = request.user
+    
+    # Superusers can see all cities
+    if user.is_superuser:
+        cities = City.objects.filter(
+            center_latitude__isnull=False,
+            center_longitude__isnull=False
+        )
+    else:
+        # Get city names from allowed_cities field
+        city_names = getattr(user, 'allowed_cities', [])
+        
+        if city_names and isinstance(city_names, list):
+            cities = City.objects.filter(
+                name__in=city_names,
+                center_latitude__isnull=False,
+                center_longitude__isnull=False
+            )
+        else:
+            cities = City.objects.none()
+    
+    serializer = CitySerializer(cities, many=True)
+    return Response(serializer.data)
 
 class CityViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing cities with their coordinates
+    ONLY accessible by superusers in Django admin
     """
     queryset = City.objects.all()
     serializer_class = CitySerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """
+        Superusers see all cities (for admin)
+        Managers see only authorized cities from allowed_cities field
+        """
+        user = self.request.user
+        
+        if user.is_superuser:
+            return City.objects.all()
+        
+        # Get city names from allowed_cities field
+        city_names = getattr(user, 'allowed_cities', [])
+        
+        if city_names and isinstance(city_names, list):
+            return City.objects.filter(name__in=city_names)
+        else:
+            return City.objects.none()
 
     @action(detail=False, methods=['get'], url_path='list_with_coordinates')
     def list_with_coordinates(self, request):
-        """Return list of cities with their center coordinates"""
-        cities = self.get_queryset()
+        """
+        Return list of cities with their center coordinates
+        Filtered by user permissions from allowed_cities field
+        """
+        cities = self.get_queryset().filter(
+            center_latitude__isnull=False,
+            center_longitude__isnull=False
+        )
+        
         data = [
             {
                 'name': city.name,
@@ -170,3 +210,4 @@ class CityViewSet(viewsets.ModelViewSet):
             for city in cities
         ]
         return Response(data)
+
