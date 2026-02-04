@@ -52,4 +52,6 @@ class ParkingSession(models.Model):
         self.save()
 
     def __str__(self):
-        return f"Session {self.id} - {self.vehicle.plate}"
+        if self.vehicle:
+            return f"Session {self.id} - {self.vehicle.plate}"
+        return f"Session {self.id} - [No Vehicle]"

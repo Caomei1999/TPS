@@ -47,6 +47,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=150, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
     allowed_cities = models.JSONField(default=list, blank=True, null=True)
+    max_violations = models.IntegerField(default=0)
+    violations_count = models.IntegerField(default=0)
     is_staff = models.BooleanField(default=False)  # Required for Django admin
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(default=timezone.now)
