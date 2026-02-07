@@ -20,6 +20,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Shift
 from .serializers import ShiftSerializer
 from django.utils import timezone
+from vehicles.models import Vehicle, Fine
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -32,24 +33,34 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
+
+        if self.user.role == 'user' and self.user.violations_count >= 3:
+            raise serializers.ValidationError(
+                {"detail": "Login denied. Your account is blocked due to excessive violations (3/3)."}
+            )
+
+        if not self.user.is_active:
+             raise serializers.ValidationError({"detail": "This account is inactive."})
+             
         data['role'] = self.user.role 
         data['allowed_cities'] = self.user.allowed_cities if self.user.allowed_cities else []
         return data
-
 class CustomTokenObtainPairView(TokenObtainPairView):
+    """
+    Generic login endpoint using CustomTokenObtainPairSerializer
+    """
     serializer_class = CustomTokenObtainPairSerializer
-
+    
 class ManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
-    Serializer for manager login - only allows manager role
+    Serializer for manager login - only allows manager role OR SUPERUSER
     """
     def validate(self, attrs):
         data = super().validate(attrs)
         
-        # Check if user has manager role
-        if self.user.role != 'manager':
+        if self.user.role != 'manager' and self.user.role != 'superuser':
             raise serializers.ValidationError(
-                {"detail": "Access denied. Only managers can access this interface."}
+                {"detail": "Access denied. Only managers (or superusers) can access this interface."}
             )
         
         data['role'] = self.user.role
@@ -60,7 +71,6 @@ class ManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token['role'] = user.role
         return token
-
 class ManagerTokenObtainPairView(TokenObtainPairView):
     """
     Login endpoint specifically for managers
@@ -69,31 +79,28 @@ class ManagerTokenObtainPairView(TokenObtainPairView):
 
 class ControllerTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
-    Serializer for controller login - only allows controller role
+    Serializer for controller login - only allows controller role OR SUPERUSER
     """
     def validate(self, attrs):
         data = super().validate(attrs)
         
-        # Check if user has controller role
-        if self.user.role != 'controller':
+        if self.user.role != 'controller' and self.user.role != 'superuser':
             raise serializers.ValidationError(
-                {"detail": "Access denied. Only controllers can access this interface."}
+                {"detail": "Access denied. Only controllers (or superusers) can access this interface."}
             )
         
         data['role'] = self.user.role
         return data
-
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token['role'] = user.role
-        return token
-
 class ControllerTokenObtainPairView(TokenObtainPairView):
     """
     Login endpoint specifically for controllers
     """
     serializer_class = ControllerTokenObtainPairSerializer
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        return token
 
 class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -108,6 +115,11 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
                 {"detail": "Access denied. Only regular users can access this interface."}
             )
         
+        if self.user.violations_count >= 3:
+            raise serializers.ValidationError(
+                {"detail": "Login denied. Your account is blocked due to excessive violations (3+)."}
+            )
+        
         data['role'] = self.user.role
         return data
 
@@ -117,18 +129,6 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['role'] = user.role
         return token
 
-class UserTokenObtainPairView(TokenObtainPairView):
-    """
-    Login endpoint specifically for regular users
-    """
-    serializer_class = UserTokenObtainPairSerializer
-
-def get_tokens_for_user(user):
-    refresh = RefreshToken.for_user(user)
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
-    }
 
 class RegisterUserView(APIView):
     permission_classes = () 
@@ -154,14 +154,8 @@ class ProfileView(APIView):
 
     def get(self, request):
         user = request.user
-        data = {
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'role': user.role, 
-            'date_joined': user.date_joined,
-        }
-        return Response(data)
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
     def patch(self, request):
         user = request.user
         serializer = UserSerializer(user, data=request.data, partial=True)
@@ -383,3 +377,63 @@ class ActiveOfficersView(APIView):
             'active_officers': active_officers,
             'count': len(active_officers)
         }, status=status.HTTP_200_OK)
+
+
+class ReportViolationView(APIView):
+    """
+    Endpoint for Officers to report a violation for a specific plate.
+    POST /api/users/violations/report/
+    Body: { "plate": "AB123CD", "reason": "Illegal Parking" }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        if request.user.role not in ['controller', 'manager', 'superuser']:
+            return Response(
+                {"detail": "Permission denied. Only officials can report violations."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        plate = request.data.get('plate')
+        if not plate:
+            return Response({"detail": "Plate is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+
+            vehicle = Vehicle.objects.get(plate__iexact=plate)
+            user = vehicle.user
+            
+
+            user.violations_count += 1
+            
+
+            if user.violations_count >= 3:
+                user.is_active = False 
+                user.save()
+
+            else:
+                user.save()
+
+            fine = Fine.objects.create(
+                vehicle=vehicle,
+                issued_by=request.user,  
+                amount=50.00,            
+                reason=request.data.get('reason', 'Illegal Parking'),
+                status='unpaid'
+            )
+
+            return Response({
+                "message": "Violation reported successfully.",
+                "fine_id": fine.id,  
+                "plate": vehicle.plate,
+                "owner_email": user.email,
+                "new_violation_count": user.violations_count,
+                "account_blocked": not user.is_active  
+            }, status=status.HTTP_201_CREATED)
+
+        except Vehicle.DoesNotExist:
+            return Response(
+                {"detail": "Vehicle not found."}, 
+                status=status.HTTP_404_NOT_FOUND
+            )

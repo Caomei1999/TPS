@@ -7,6 +7,7 @@ class ParkingSession {
   final Parking? parkingLot;
   final DateTime startTime;
   final bool isActive;
+  final DateTime endTime;
   final double? totalCost;
 
   // Convenience getters for display (Controller App)
@@ -17,6 +18,7 @@ class ParkingSession {
     required this.id,
     required this.vehicle,
     this.parkingLot,
+    required this.endTime,
     required this.startTime,
     required this.isActive,
     this.totalCost,
@@ -36,8 +38,13 @@ class ParkingSession {
     return ParkingSession(
       id: json['id'],
       vehicle: Vehicle.fromJson(vehicleData),
-      parkingLot: parkingLotData.isNotEmpty ? Parking.fromJson(parkingLotData) : null,
+      parkingLot: parkingLotData.isNotEmpty
+          ? Parking.fromJson(parkingLotData)
+          : null,
       startTime: DateTime.parse(json['start_time']),
+      endTime: json['end_time'] != null
+          ? DateTime.parse(json['end_time'])
+          : DateTime.now(),
       isActive: json['is_active'] ?? false,
       totalCost: parseCost(json['total_cost']),
     );

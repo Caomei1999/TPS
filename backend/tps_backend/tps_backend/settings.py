@@ -138,7 +138,7 @@ AUTH_PASSWORD_VALIDATORS = []
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Rome'
 
 USE_I18N = True
 
@@ -194,29 +194,68 @@ STATICFILES_DIRS = [
 UNFOLD = {
     "SITE_TITLE": None,  # Remove title from sidebar
     "SITE_HEADER": "TPS Management Dashboard",
+    "DASHBOARD_CALLBACK": "tps_backend.dashboard.dashboard_callback",
     "SITE_URL": "/",
     "SITE_ICON": None,
     
     "SIDEBAR": {
         "show_search": True,
         "show_all_applications": False,
-        "show_recent_actions": False,
         "navigation": [
             {
+                "title": "User Management",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Admins",
+                        "icon": "admin_panel_settings",
+                        "link": lambda request: "/admin/users/customuser/?role__exact=superuser",
+                    },
+                    {
+                        "title": "Managers",
+                        "icon": "supervisor_account",
+                        "link": lambda request: "/admin/users/customuser/?role__exact=manager",
+                    },
+                    {
+                        "title": "Patrollers", 
+                        "icon": "local_police",
+                        "link": lambda request: "/admin/users/customuser/?role__exact=controller",
+                    },
+                    {
+                        "title": "All Users",
+                        "icon": "group",
+                        "link": lambda request: "/admin/users/customuser/",
+                    },
+                    {
+                        "title": "Vehicles",
+                        "icon": "directions_car",
+                        "link": lambda request: "/admin/vehicles/vehicle/",
+                    },
+                    {
+                        "title": "Patroller Shifts",
+                        "icon": "schedule",
+                        "link": lambda request: "/admin/users/shift/",
+                    },
+                ],
+            },
+            {
                 "title": "Infrastructure",
-                "separator": True,
                 "collapsible": True,
                 "items": [
                     {
                         "title": "Cities",
                         "icon": "location_city",
                         "link": lambda request: "/admin/parkings/city/",
-                        "permission": lambda request: request.user.is_superuser,
                     },
                     {
                         "title": "Parkings",
                         "icon": "local_parking",
                         "link": lambda request: "/admin/parkings/parking/",
+                    },
+                    {
+                        "title": "Entrances",
+                        "icon": "meeting_room", 
+                        "link": lambda request: "/admin/parkings/parkingentrance/",
                     },
                     {
                         "title": "Spots",
@@ -226,47 +265,24 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Users & Access",
-                "separator": True,
+                "title": "Sessions",
                 "collapsible": True,
                 "items": [
                     {
-                        "title": "Users",
-                        "icon": "people",
-                        "link": lambda request: "/admin/users/customuser/",
-                    },
-                    {
-                        "title": "Shifts",
-                        "icon": "schedule",
-                        "link": lambda request: "/admin/users/shift/",
-                        "permission": lambda request: request.user.is_superuser,
-                    },
-                ],
-            },
-            {
-                "title": "Operations",
-                "separator": True,
-                "collapsible": True,
-                "items": [
-                    {
-                        "title": "Vehicles",
-                        "icon": "directions_car",
-                        "link": lambda request: "/admin/vehicles/vehicle/",
-                    },
-                    {
-                        "title": "Sessions",
-                        "icon": "access_time",
+                        "title": "Parking Sessions",
+                        "icon": "timer",
                         "link": lambda request: "/admin/vehicles/parkingsession/",
                     },
                     {
-                        "title": "Fines",
-                        "icon": "receipt",
+                        "title": "Violations", 
+                        "icon": "gavel",
                         "link": lambda request: "/admin/vehicles/fine/",
                     },
                 ],
             },
         ],
     },
+
     
     "STYLES": [
         lambda request: "/static/css/custom_admin.css",

@@ -3,24 +3,21 @@ from unfold.admin import ModelAdmin
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import CustomUser
-
+from django.contrib import messages
 from parkings.models import City
 from .models import Shift
-
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 def get_dynamic_city_choices():
     """Get cities from the City model"""
     cities = set()
-    
     try:
-        # Get cities from City model
         db_cities = City.objects.values_list('name', flat=True)
         for city in db_cities:
             if city:
                 cities.add(city)
     except Exception:
         pass
-    
     return sorted([(c, c) for c in cities])
 
 
@@ -34,11 +31,10 @@ class CustomUserChangeForm(forms.ModelForm):
 
     class Meta:
         model = CustomUser
-        fields = ('email', 'first_name', 'last_name', 'role', 'allowed_cities', 'is_active')
+        fields = ('email', 'first_name', 'last_name', 'role', 'allowed_cities', 'is_active', 'is_staff', 'is_superuser')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
         self.fields['allowed_cities'].choices = get_dynamic_city_choices()
 
         if self.instance and self.instance.allowed_cities:
@@ -78,7 +74,7 @@ class CustomUserCreationForm(forms.ModelForm):
 
     class Meta:
         model = CustomUser
-        fields = ('email', 'first_name', 'last_name', 'role', 'allowed_cities')
+        fields = ('email', 'first_name', 'last_name', 'role', 'allowed_cities', 'is_staff', 'is_superuser')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -107,28 +103,64 @@ class CustomUserCreationForm(forms.ModelForm):
             user.save()
         return user
 
+@admin.action(description="🔄 Reset Account Standing (0 Violations & Unban)")
+def reset_user_standing(modeladmin, request, queryset):
+    updated_count = queryset.update(violations_count=0, is_active=True)
+    
+    modeladmin.message_user(
+        request, 
+        f"Successfully reset standing for {updated_count} users. They can now login.", 
+        messages.SUCCESS
+    )
+
 @admin.register(CustomUser)
-class CustomUserAdmin(ModelAdmin):
+class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     form = CustomUserChangeForm
     add_form = CustomUserCreationForm
 
-    list_display = ('email', 'role_badge', 'get_cities_display', 'is_active')
-    list_filter = ('role', 'is_active')
+    list_display = ('email', 'role_badge', 'get_cities_display', 'violations_count', 'is_active', 'is_staff')
+    list_filter = ('role', 'is_active', 'is_staff', 'violations_count')
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)
+    
+    actions = [reset_user_standing]
 
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'role')}),
+        ('Permissions (Managers & Controllers)', {'fields': ('allowed_cities',)}),
+        ('Status & Standing', {'fields': ('is_active', 'violations_count', 'is_staff', 'is_superuser')}),
+    )
+
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'password'),
+        }),
+        ('Personal Info', {
+            'classes': ('wide',),
+            'fields': ('first_name', 'last_name', 'role', 'allowed_cities'),
+        }),
+        ('Permissions', {
+            'classes': ('wide',),
+            'fields': ('is_staff', 'is_superuser'),
+        }),
+    )
+    
     def get_fieldsets(self, request, obj=None):
+        if not obj:
+            return self.add_fieldsets
+            
         fieldsets = [
             (None, {'fields': ('email', 'password')}),
             ('Personal info', {'fields': ('first_name', 'last_name', 'role')}),
         ]
-        if not obj or obj.role != 'user':
+        if obj.role != 'user':
             fieldsets.append(
                 ('Permissions (Managers & Controllers)', {'fields': ('allowed_cities',)})
             )
-
         fieldsets.append(
-            ('Status', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
+            ('Status & Standing', {'fields': ('is_active', 'violations_count', 'is_staff', 'is_superuser')}),
         )
         return fieldsets
     
@@ -145,7 +177,6 @@ class CustomUserAdmin(ModelAdmin):
     def role_badge(self, obj):
         return obj.get_role_display().upper()
     role_badge.short_description = "Role"
-
 
 
 @admin.register(Shift)
@@ -165,7 +196,6 @@ class ShiftAdmin(ModelAdmin):
     )
 
     def get_duration(self, obj):
-        """Display shift duration in human-readable format"""
         if obj.end_time and obj.start_time:
             duration = obj.end_time - obj.start_time
             hours = duration.total_seconds() // 3600
@@ -174,7 +204,6 @@ class ShiftAdmin(ModelAdmin):
         return "Ongoing" if obj.status == "OPEN" else "-"
     get_duration.short_description = "Duration"
 
-    # only superuser can see this module in the admin
     def has_module_permission(self, request):
         return request.user.is_superuser
 

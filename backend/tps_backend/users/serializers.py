@@ -5,6 +5,7 @@ from django.core import exceptions
 from django.contrib.auth.tokens import default_token_generator
 
 class UserSerializer(serializers.ModelSerializer):
+    remaining_chances = serializers.SerializerMethodField()
     class Meta:
         model = CustomUser
         fields = (
@@ -14,8 +15,15 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name', 
             'role', 
             'date_joined',
+            'remaining_chances',
         )
         read_only_fields = ('id', 'email', 'role', 'date_joined')
+    def get_remaining_chances(self, obj):
+        limit = 3 
+        used = getattr(obj, 'violations_count', 0) 
+        
+        remaining = limit - used
+        return max(remaining, 0)
 
 class UserRegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)

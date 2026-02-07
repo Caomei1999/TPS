@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconly/iconly.dart';
 import 'package:intl/intl.dart';
 import 'package:user_interface/MODELS/parking_session.dart';
-import 'package:user_interface/STATE/parking_session_state.dart'; 
+import 'package:user_interface/STATE/parking_session_state.dart';
 
 class ActiveSessionCard extends ConsumerWidget {
   final ParkingSession session;
@@ -13,7 +13,7 @@ class ActiveSessionCard extends ConsumerWidget {
   final bool isStopping;
 
   // Grace period: 10 minuti dopo la scadenza
-  static const Duration gracePeriod = Duration(minutes: 10);
+  static const Duration gracePeriod = Duration(minutes: 15);
 
   const ActiveSessionCard({
     super.key,
@@ -32,18 +32,19 @@ class ActiveSessionCard extends ConsumerWidget {
     // 2. Calcola la durata totale e il tempo rimanente
     final int totalMinutes = session.durationPurchasedMinutes;
     final Duration totalDuration = Duration(minutes: totalMinutes);
-    
+
     final Duration remaining = totalDuration - elapsed;
     final bool isExpired = remaining.isNegative;
-    
+
     // 3. Calcolo grace period
-    final Duration gracePeriodRemaining = isExpired 
-        ? gracePeriod + remaining  // remaining è negativo, quindi sommiamo
+    final Duration gracePeriodRemaining = isExpired
+        ? gracePeriod +
+              remaining // remaining è negativo, quindi sommiamo
         : Duration.zero;
-    
+
     final bool isInGracePeriod = isExpired && !gracePeriodRemaining.isNegative;
     final bool isFinallyExpired = isExpired && gracePeriodRemaining.isNegative;
-    
+
     // 4. Calcolo percentuale per il grafico circolare (0.0 -> 1.0)
     double progress = 0.0;
     if (totalDuration.inSeconds > 0) {
@@ -54,15 +55,15 @@ class ActiveSessionCard extends ConsumerWidget {
     // 5. Determina Colore e Stato
     Color statusColor = Colors.greenAccent;
     String statusText = "ACTIVE";
-    
+
     // Timer principale sempre a zero quando scaduto
     Duration displayMainTime = isExpired ? Duration.zero : remaining;
-    
+
     if (isFinallyExpired) {
       statusColor = Colors.redAccent;
       statusText = "PENALTY RISK";
     } else if (isInGracePeriod) {
-      statusColor = Colors.redAccent;  // ROSSO per expired/grace period
+      statusColor = Colors.redAccent; // ROSSO per expired/grace period
       statusText = "EXPIRED";
     } else if (remaining.inMinutes < 15) {
       statusColor = Colors.orangeAccent;
@@ -80,7 +81,7 @@ class ActiveSessionCard extends ConsumerWidget {
             color: statusColor.withOpacity(0.1),
             blurRadius: 15,
             offset: const Offset(0, 5),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -109,7 +110,10 @@ class ActiveSessionCard extends ConsumerWidget {
                       children: [
                         Text(
                           session.vehicle?.plate ?? 'Unknown Plate',
-                          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
+                          style: GoogleFonts.poppins(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -118,7 +122,10 @@ class ActiveSessionCard extends ConsumerWidget {
               ),
               const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
@@ -169,11 +176,11 @@ class ActiveSessionCard extends ConsumerWidget {
                         ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
               const SizedBox(width: 20),
-              
+
               // Testo Tempo Rimanente
               Expanded(
                 child: Column(
@@ -202,7 +209,10 @@ class ActiveSessionCard extends ConsumerWidget {
                       isExpired
                           ? "Expired at: ${_formatTime(session.plannedEndTime)}"
                           : "Expires at: ${_formatTime(session.plannedEndTime)}",
-                      style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
+                      style: GoogleFonts.poppins(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -275,9 +285,16 @@ class ActiveSessionCard extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(IconlyLight.wallet, color: Colors.white70, size: 18),
+                    const Icon(
+                      IconlyLight.wallet,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
-                    Text("Paid Amount", style: GoogleFonts.poppins(color: Colors.white70)),
+                    Text(
+                      "Paid Amount",
+                      style: GoogleFonts.poppins(color: Colors.white70),
+                    ),
                   ],
                 ),
                 Text(
@@ -303,7 +320,10 @@ class ActiveSessionCard extends ConsumerWidget {
                 icon: const Icon(Icons.add_circle_outline, size: 20),
                 label: Text(
                   "EXTEND SESSION",
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber,
@@ -336,11 +356,17 @@ class ActiveSessionCard extends ConsumerWidget {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : Text(
                       "STOP SESSION (NO REFUND)",
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
             ),
           ),
@@ -360,6 +386,6 @@ class ActiveSessionCard extends ConsumerWidget {
 
   String _formatTime(DateTime? dt) {
     if (dt == null) return "--:--";
-    return DateFormat('HH:mm').format(dt);
+    return DateFormat('HH:mm').format(dt.toLocal());
   }
 }

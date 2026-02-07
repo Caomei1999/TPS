@@ -31,6 +31,12 @@ class ParkingEntranceInline(TabularInline):
     extra = 0
     verbose_name = 'Entrance (for underground parking)'
     verbose_name_plural = 'Entrances (optional - leave empty for street parking)'
+    
+@admin.register(ParkingEntrance)
+class ParkingEntranceAdmin(ModelAdmin):
+    list_display = ('parking', 'address_line', 'latitude', 'longitude')
+    search_fields = ('parking__name', 'address_line')
+    list_filter = ('parking__city',)
 
 @admin.register(Parking)
 class ParkingAdmin(ModelAdmin):

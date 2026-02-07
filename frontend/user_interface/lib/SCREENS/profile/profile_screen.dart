@@ -91,15 +91,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _userData?['last_name'] = _lastNameController.text.trim();
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Profile updated!")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Profile updated!")));
       }
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Failed to update profile. Check the console for details."),
+            content: Text(
+              "Failed to update profile. Check the console for details.",
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -167,27 +169,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: TextStyle(color: Colors.red),
                 ),
               )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const PageTitle(title: 'Profile'),
-                        _buildLogoutButton(context),
-                      ],
-                    ),
-                    const SizedBox(height: 30),
+            : RefreshIndicator(
+                onRefresh: _loadUserProfile,
+                color: Colors.black,
+                backgroundColor: Colors.white,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
 
-                    _buildUserInfoCard(context),
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const PageTitle(title: 'Profile'),
+                          _buildLogoutButton(context),
+                        ],
+                      ),
+                      const SizedBox(height: 30),
 
-                    const SizedBox(height: 30),
-                    _buildFavoriteVehiclesSection(),
-                    const SizedBox(height: 30),
-                  ],
+                      _buildUserInfoCard(context),
+
+                      const SizedBox(height: 30),
+                      _buildFavoriteVehiclesSection(),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
                 ),
               ),
       ),
@@ -197,7 +206,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildUserInfoCard(BuildContext context) {
     final String email = _userData?['email'] ?? 'N/A';
     final String joined = _formatJoinDate(_userData?['date_joined']);
-
+    final int remaining = _userData?['remaining_chances'] ?? 3;
+    final bool isCritical = remaining <= 1;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -288,6 +298,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _buildInfoRow(IconlyLight.message, 'Email', email),
           const Divider(color: Colors.white24, height: 25),
           _buildInfoRow(IconlyLight.calendar, 'Joined', joined),
+          const Divider(color: Colors.white24, height: 25),
+          _buildInfoRow(
+            isCritical
+                ? Icons.gpp_maybe_outlined
+                : Icons.verified_user_outlined,
+            'Account Standing',
+            '$remaining / 3 Chances',
+            valueColor: isCritical ? Colors.redAccent : null,
+          ),
         ],
       ),
     );
@@ -376,7 +395,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
     return Row(
       children: [
         Icon(icon, color: Colors.white70, size: 20),
@@ -392,7 +416,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Text(
                 value,
                 style: GoogleFonts.poppins(
-                  color: Colors.white,
+                  color: valueColor ?? Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),

@@ -6,13 +6,16 @@ from django.db.models import Count, Q, OuterRef, Subquery, IntegerField, Decimal
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from decimal import Decimal
-
+from datetime import timedelta
+from django.utils import timezone
 from .models import Parking, Spot, City
 from .serializers import ParkingSerializer, SpotSerializer, CitySerializer
 from vehicles.models import ParkingSession
 from vehicles.serializers import ParkingSessionSerializer
 from rest_framework.permissions import IsAuthenticated
-
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 class ParkingViewSet(viewsets.ModelViewSet):
     serializer_class = ParkingSerializer
     permission_classes = [permissions.IsAuthenticated]

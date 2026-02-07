@@ -39,7 +39,8 @@ class ParkingSession(models.Model):
     prepaid_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     is_expired = models.BooleanField(default=False)
     expired_at = models.DateTimeField(null=True, blank=True) 
-    
+    grace_period_minutes = models.IntegerField(default=15)
+    is_in_grace_period = models.BooleanField(default=False)
     class Meta:
         verbose_name = "Parking Session"
         verbose_name_plural = "Parking Sessions"
@@ -55,3 +56,30 @@ class ParkingSession(models.Model):
         if self.vehicle:
             return f"Session {self.id} - {self.vehicle.plate}"
         return f"Session {self.id} - [No Vehicle]"
+
+class Fine(models.Model):
+    STATUS_CHOICES = (
+        ('unpaid', 'Unpaid'),
+        ('paid', 'Paid'),
+        ('disputed', 'Disputed'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name='fines')
+    session = models.ForeignKey(ParkingSession, on_delete=models.SET_NULL, null=True, blank=True)
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=50.00)
+    reason = models.CharField(max_length=255, default="Parking Violation")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unpaid')
+    
+    issued_at = models.DateTimeField(default=timezone.now)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Violation / Fine"
+        verbose_name_plural = "Violations / Fines"
+        ordering = ['-issued_at']
+
+    def __str__(self):
+        return f"Fine #{self.id} - {self.vehicle.plate}"

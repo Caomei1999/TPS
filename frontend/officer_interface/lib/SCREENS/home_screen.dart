@@ -18,11 +18,7 @@ class HomeScreen extends StatefulWidget {
   final DateTime? shiftStartTime;
   final int? shiftId;
 
-  const HomeScreen({
-    super.key,
-    this.shiftStartTime,
-    this.shiftId,
-  });
+  const HomeScreen({super.key, this.shiftStartTime, this.shiftId});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -35,7 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
   ParkingSession? _activeSession;
   String? _message;
   bool _isLoading = false;
-
+  String? _status;
+  bool _canIssueTicket = false;
   Timer? _timer;
   Duration _elapsed = Duration.zero;
 
@@ -75,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (plate.isEmpty) {
       setState(() {
         _activeSession = null;
+        _status = null;
         _message = "Please enter a license plate.";
       });
       return;
@@ -83,23 +81,32 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _isLoading = true;
       _activeSession = null;
+      _status = null;
+      _canIssueTicket = false;
       _message = null;
     });
 
     try {
-      final session =
-          await ControllerService.searchActiveSessionByPlate(plate);
+      final result = await ControllerService.searchActiveSessionByPlate(plate);
 
       setState(() {
-        _activeSession = session;
-        if (session == null) {
-          _message =
-              "Vehicle with plate '$plate' has NO active parking session.";
+        if (result != null) {
+          _status = result['status'];
+          _canIssueTicket = result['can_issue_ticket'] ?? false;
+          _message = result['message'];
+
+          if (result['session_data'] != null) {
+            _activeSession = ParkingSession.fromJson(result['session_data']);
+          } else {
+            _activeSession = null;
+          }
+        } else {
+          _message = "Connection error or unauthorized.";
         }
       });
     } catch (e) {
       setState(() {
-        _message = "Error during search.";
+        _message = "Error during search: $e";
       });
     } finally {
       setState(() {
@@ -130,8 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final result = await PlateOcrService.recognizePlate(image);
-      final plate =
-          (result['plate'] ?? '').toString().trim().toUpperCase();
+      final plate = (result['plate'] ?? '').toString().trim().toUpperCase();
 
       if (plate.isEmpty) {
         setState(() {
@@ -159,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _handleEndShift() async {
     if (widget.shiftId == null) return;
-    
+
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
@@ -167,7 +173,9 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: const Color.fromARGB(255, 2, 11, 60),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             "End Shift?",
             style: GoogleFonts.poppins(
@@ -178,23 +186,20 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           content: Text(
             "Are you sure you want to end your current shift?",
-            style: GoogleFonts.poppins(
-              color: Colors.white70,
-              fontSize: 15,
-            ),
+            style: GoogleFonts.poppins(color: Colors.white70, fontSize: 15),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
               ),
               child: Text(
                 "Cancel",
-                style: GoogleFonts.poppins(
-                  color: Colors.white70,
-                  fontSize: 15,
-                ),
+                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 15),
               ),
             ),
             ElevatedButton(
@@ -202,7 +207,10 @@ class _HomeScreenState extends State<HomeScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -232,7 +240,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     final hasShift = widget.shiftStartTime != null && widget.shiftId != null;
 
     return Scaffold(
@@ -271,7 +278,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -350,18 +360,29 @@ class _HomeScreenState extends State<HomeScreen> {
     return TextField(
       controller: _plateController,
       textCapitalization: TextCapitalization.characters,
-      style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, letterSpacing: 2),
+      style: GoogleFonts.poppins(
+        color: Colors.white,
+        fontSize: 20,
+        letterSpacing: 2,
+      ),
       cursorColor: Colors.white,
       decoration: InputDecoration(
         hintText: "E.g., AB123CD",
-        hintStyle: GoogleFonts.poppins(color: Colors.white54, fontSize: 20, letterSpacing: 2),
+        hintStyle: GoogleFonts.poppins(
+          color: Colors.white54,
+          fontSize: 20,
+          letterSpacing: 2,
+        ),
         filled: true,
         fillColor: Colors.white.withOpacity(0.1),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 20,
+        ),
       ),
       onSubmitted: (_) => _searchPlate(),
     );
@@ -369,46 +390,256 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildResultsArea() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
     }
-    
-    if (_activeSession != null) {
+
+    if (_status == 'active' && _activeSession != null) {
       return _buildActiveSessionCard(_activeSession!);
+    }
+    if (_status == 'grace_period' && _activeSession != null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.orange.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.orangeAccent),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orangeAccent,
+              size: 50,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "GRACE PERIOD",
+              style: GoogleFonts.poppins(
+                color: Colors.orangeAccent,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _message ?? "Session expired but within grace time.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16),
+            ),
+            const SizedBox(height: 20),
+            _buildInfoRow(
+              "Expired At",
+              DateFormat('HH:mm').format(_activeSession!.endTime.toLocal()),
+            ),
+            _buildInfoRow("Plate", _activeSession!.vehiclePlate),
+          ],
+        ),
+      );
+    }
+    if (_status == 'not_found') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.no_crash_outlined,
+              color: Colors.redAccent,
+              size: 50,
+            ),
+            const SizedBox(height: 15),
+            Text(
+              "VEHICLE NOT FOUND",
+              style: GoogleFonts.poppins(
+                color: Colors.redAccent,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "This license plate is not registered in the database.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              "Cannot issue digital ticket.",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                color: Colors.white38,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_canIssueTicket) {
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.redAccent),
+            ),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.redAccent,
+                  size: 40,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _message ?? "Violation Detected",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    color: Colors.redAccent,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton.icon(
+              onPressed: _handleReportViolation,
+              icon: const Icon(Icons.gavel, size: 28),
+              label: Text(
+                "ISSUE TICKET",
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
     }
 
     if (_message != null) {
-      final isError = _message!.contains("NO active parking session");
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isError ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: isError ? Colors.redAccent : Colors.greenAccent),
-          ),
-          child: Text(
-            _message!,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: isError ? Colors.redAccent : Colors.greenAccent,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      );
+      return Text(_message!, style: const TextStyle(color: Colors.white));
     }
 
     return const SizedBox.shrink();
   }
-  
+
+  Future<void> _handleReportViolation() async {
+    final plate = _plateController.text.trim();
+    if (plate.isEmpty) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color.fromARGB(255, 2, 11, 60),
+        title: const Text(
+          "Confirm Violation",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          "Are you sure you want to issue a ticket to vehicle $plate?\nUser's violation count will increase.",
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("ISSUE TICKET"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+
+    final int statusCode = await ControllerService.reportViolation(plate);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+
+      if (statusCode == 200) {
+        _plateController.clear();
+        _message = null;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 10),
+                Text("Violation Reported! Count +1"),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else if (statusCode == 404) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Vehicle Not Found in Database! (Unregistered)"),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (statusCode == 403) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Permission Denied: Only officials can issue tickets.",
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to report. Error Code: $statusCode"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
+  }
+
   Widget _buildActiveSessionCard(ParkingSession session) {
     final startTime = session.startTime.toLocal();
     final duration = DateTime.now().difference(startTime);
     final formatter = DateFormat('MMM d, yyyy HH:mm');
     final durationHours = duration.inHours;
     final durationMinutes = duration.inMinutes % 60;
-    
+
     return Container(
       padding: const EdgeInsets.all(30),
       decoration: BoxDecoration(
@@ -431,37 +662,51 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 "ACTIVE SESSION",
-                style: GoogleFonts.poppins(color: Colors.greenAccent, fontSize: 24, fontWeight: FontWeight.bold),
+                style: GoogleFonts.poppins(
+                  color: Colors.greenAccent,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              const Icon(Icons.check_circle, color: Colors.greenAccent, size: 30),
+              const Icon(
+                Icons.check_circle,
+                color: Colors.greenAccent,
+                size: 30,
+              ),
             ],
           ),
           const Divider(color: Colors.white38, height: 30),
-          
+
           // FIXED: Show only Plate, not Name
-          _buildInfoRow("License Plate", session.vehiclePlate), 
-          _buildInfoRow("Parking Lot", session.parkingLot?.name ?? "Unknown Parking"),
-          _buildInfoRow("Parking Address", session.parkingLot?.address ?? "N/A"),
+          _buildInfoRow("License Plate", session.vehiclePlate),
+          _buildInfoRow(
+            "Parking Lot",
+            session.parkingLot?.name ?? "Unknown Parking",
+          ),
+          _buildInfoRow(
+            "Parking Address",
+            session.parkingLot?.address ?? "N/A",
+          ),
           _buildInfoRow("Session ID", "#${session.id}"),
-          
+
           const Divider(color: Colors.white38, height: 30),
 
           // Duration and Cost
           _buildInfoRow(
-            "Start Time", 
-            formatter.format(startTime), 
-            isHighlight: true
+            "Start Time",
+            formatter.format(startTime),
+            isHighlight: true,
           ),
           _buildInfoRow(
-            "Duration", 
+            "Duration",
             "${durationHours}h ${durationMinutes}m",
-            isHighlight: true
+            isHighlight: true,
           ),
         ],
       ),
     );
   }
-  
+
   Widget _buildInfoRow(String label, String value, {bool isHighlight = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -479,9 +724,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               value,
               style: GoogleFonts.poppins(
-                color: isHighlight ? Colors.white : Colors.white, 
-                fontSize: 16, 
-                fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal
+                color: isHighlight ? Colors.white : Colors.white,
+                fontSize: 16,
+                fontWeight: isHighlight ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ),

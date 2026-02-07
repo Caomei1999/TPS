@@ -1,130 +1,261 @@
-{% extends "unfold/layouts/base_simple.html" %}
+{% extends "unfold/layouts/base.html" %}
 {% load i18n unfold static %}
 
-{% block breadcrumbs %}{% endblock %}
-
-{% block title %}
-    TPS Management Dashboard | {{ site_title }}
-{% endblock %}
-
-{% block extrahead %}
-<link rel="stylesheet" href="{% static 'css/custom_admin.css' %}">
-<style>
-    /* Override topbar title */
-    .unfold-header h1 {
-        background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-</style>
-{% endblock %}
+{% block title %}TPS Dashboard{% endblock %}
 
 {% block content %}
-<div style="padding: 2rem;">
-    <!-- Welcome Message - Bold & Larger Font -->
-    <div style="margin-bottom: 2.5rem;">
-        <p style="font-size: 2rem; font-weight: 700; color: var(--unfold-color-text-primary);">
-            {% if user.first_name %}
-                Welcome back, <span style="font-weight: 700; background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">{{ user.first_name }}</span>!
-            {% else %}
-                Welcome, <span style="font-weight: 700; background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">{{ user.email }}</span>!
-            {% endif %}
-        </p>
+<style>
+  
+    .stat-card, .activity-container {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+
+ 
+    .insight-number {
+        font-size: 3.5rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    .insight-label {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #6b7280; 
+    }
+    .insight-sub {
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-top: 5px;
+        opacity: 0.9;
+    }
+    
+  
+    .text-neon-blue { color: #3b82f6; }
+
+    .text-neon-orange { color: #f59e0b; }
+ 
+    .text-neon-green { color: #10b981; }
+
+    .text-neon-red { color: #ef4444; }
+
+   
+    .shortcut-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); 
+        gap: 1.25rem;
+    }
+
+    .shortcut-btn {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 24px 28px;
+        border-radius: 16px; 
+        text-decoration: none;
+        transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); 
+        color: white !important; 
+        min-height: 100px;
+    }
+    
+    .shortcut-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        filter: brightness(1.05); 
+    }
+
+    .shortcut-title {
+        font-size: 1.3rem; 
+        font-weight: 700;
+        margin-bottom: 4px;
+        display: block;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    .shortcut-desc {
+        font-size: 0.85rem;
+        font-weight: 500;
+        opacity: 0.85;
+        display: block;
+    }
+
+ 
+    .grad-user { background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%); }
+
+    .grad-manager { background: linear-gradient(90deg, #ec4899 0%, #f472b6 100%); }
+
+    .grad-patroller { background: linear-gradient(90deg, #22c55e 0%, #06b6d4 100%); }
+ 
+    .grad-admin { background: linear-gradient(90deg, #a855f7 0%, #d946ef 100%); }
+
+    .grad-city { background: linear-gradient(90deg, #f43f5e 0%, #fbbf24 100%); }
+
+    .grad-parking { background: linear-gradient(90deg, #facc15 0%, #f97316 100%); }
+ 
+    .grad-manage { background: linear-gradient(90deg, #2563eb 0%, #38bdf8 100%); }
+ 
+    .grad-violation { background: linear-gradient(90deg, #ef4444 0%, #f87171 100%); }
+
+
+    /* 4. Recent Activity */
+    .activity-item {
+        padding: 16px 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    
+    .avatar-circle {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+        background-color: #eff6ff;
+        color: #3b82f6;
+    }
+    .dark .insight-label { color: #9ca3af; } 
+    .dark .activity-item { border-bottom-color: #374151; }
+    .dark .avatar-circle { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    
+    .dark .text-neon-blue { color: #60a5fa; }
+    .dark .text-neon-orange { color: #fbbf24; }
+    .dark .text-neon-green { color: #34d399; }
+    .dark .text-neon-red { color: #f87171; }
+
+</style>
+
+<div class="px-6 py-8">
+    
+    <div class="mb-10">
+        <h1 class="text-7xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+            Welcome back, <span class="text-neon-blue">{{ request.user.first_name|default:request.user.username }}!</span>
+        </h1>
     </div>
 
-    <!-- Statistics Section -->
-    <h2 style="font-size: 1.5rem; font-weight: 400; margin-bottom: 1.5rem; color: var(--unfold-color-text-primary);">
-        Shortcuts
-    </h2>
-    <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;">
-        
-        <a href="/admin/parkings/parking/" class="stat-card parkings" style="text-decoration: none; color: white; display: block; height: 100%;">
-            <h3>Total Parkings</h3>
-            <div class="number">{{ total_parkings }}</div>
-            <div class="label">Across all cities</div>
-        </a>
+    <div class="mb-12">
+        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Insights</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            
+            <div class="stat-card">
+                <div class="insight-number text-neon-blue">{{ stats.total_users|default:"0" }}</div>
+                <div class="insight-label">Total Users</div>
+                <div class="insight-sub text-neon-blue">+{{ stats.new_users_today|default:"0" }} Today</div>
+            </div>
 
-        <a href="/admin/users/customuser/" class="stat-card users" style="text-decoration: none; color: white; display: block; height: 100%;">
-            <h3>Registered Users</h3>
-            <div class="number">{{ total_users }}</div>
-            <div class="label">Active accounts</div>
-        </a>
+            <div class="stat-card">
+                <div class="insight-number text-neon-orange">{{ stats.active_sessions|default:"0" }}</div>
+                <div class="insight-label">Active Sessions</div>
+                <div class="insight-sub text-neon-orange flex items-center gap-2">
+                    Live
+                </div>
+            </div>
 
-        <a href="/admin/vehicles/parkingsession/?is_active__exact=1" class="stat-card sessions" style="text-decoration: none; color: white; display: block; height: 100%;">
-            <h3>Active Sessions</h3>
-            <div class="number">{{ active_sessions }}</div>
-            <div class="label">Currently parking</div>
-        </a>
+            <div class="stat-card">
+                <div class="insight-number text-neon-green">€{{ stats.all_revenue|default:"0.00" }}</div>
+                <div class="insight-label">All Time Revenue</div>
+                <div class="insight-sub text-neon-green">+€{{ stats.today_revenue|default:"0.00" }} Today</div>
+            </div>
 
-        <a href="/admin/vehicles/parkingsession/" class="stat-card revenue" style="text-decoration: none; color: white; display: block; height: 100%;">
-            <h3>Today's Revenue</h3>
-            <div class="number">€{{ today_revenue|floatformat:2 }}</div>
-            <div class="label">Total earnings</div>
-        </a>
-        
+            <div class="stat-card">
+                <div class="insight-number text-neon-red">{{ stats.unpaid_violations|default:"0" }}</div>
+                <div class="insight-label">Unpaid Violations</div>
+                <div class="insight-sub text-gray-400">{{ stats.new_violations_today|default:"0" }} new</div>
+            </div>
+        </div>
     </div>
 
-    <!-- Recent Activity Section -->
-    <div style="margin-top: 3rem;">
-        <h2 style="font-size: 1.5rem; font-weight: 400; margin-bottom: 1.5rem; color: var(--unfold-color-text-primary);">
-            Recent Activity
-        </h2>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
         
-        <div style="background: var(--unfold-color-background-card); border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid var(--unfold-color-border);">
-            {% if recent_sessions %}
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--unfold-color-border);">
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--unfold-color-text-secondary);">Vehicle</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--unfold-color-text-secondary);">Parking</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--unfold-color-text-secondary);">Started</th>
-                            <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--unfold-color-text-secondary);">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for session in recent_sessions %}
-                        <tr style="border-bottom: 1px solid var(--unfold-color-border);">
-                            <td style="padding: 0.75rem; color: var(--unfold-color-text-primary);">{{ session.vehicle.license_plate }}</td>
-                            <td style="padding: 0.75rem; color: var(--unfold-color-text-primary);">{{ session.parking_lot.name }}</td>
-                            <td style="padding: 0.75rem; color: var(--unfold-color-text-primary);">{{ session.start_time|date:"H:i" }}</td>
-                            <td style="padding: 0.75rem;">
-                                {% if session.is_active %}
-                                    <span style="background: #10b981; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Active</span>
-                                {% else %}
-                                    <span style="background: #6b7280; color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Ended</span>
-                                {% endif %}
-                            </td>
-                        </tr>
+        <div class="lg:col-span-2">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Shortcuts</h3>
+            
+            <div class="shortcut-grid">
+                <a href="/admin/users/customuser/add/" class="shortcut-btn grad-user">
+                    <span class="shortcut-title">Add User</span>
+                    <span class="shortcut-desc">Create new customer account</span>
+                </a>
+
+                <a href="/admin/users/customuser/add/?role=manager" class="shortcut-btn grad-manager">
+                    <span class="shortcut-title">Add Manager</span>
+                    <span class="shortcut-desc">Create new manager</span>
+                </a>
+
+                <a href="/admin/users/customuser/add/?role=officer" class="shortcut-btn grad-patroller">
+                    <span class="shortcut-title">Add Patroller</span>
+                    <span class="shortcut-desc">Register new patroller</span>
+                </a>
+
+                <a href="/admin/users/customuser/add/?role=admin" class="shortcut-btn grad-admin">
+                    <span class="shortcut-title">Add Admin</span>
+                    <span class="shortcut-desc">Create new admin</span>
+                </a>
+
+                <a href="/admin/parkings/city/add/" class="shortcut-btn grad-city">
+                    <span class="shortcut-title">Add City</span>
+                    <span class="shortcut-desc">Register new city</span>
+                </a>
+
+                <a href="/admin/parkings/parking/add/" class="shortcut-btn grad-parking">
+                    <span class="shortcut-title">Add Parking</span>
+                    <span class="shortcut-desc">Create parking lot</span>
+                </a>
+
+                <a href="/admin/users/customuser/?role__exact=officer" class="shortcut-btn grad-manage">
+                     <span class="shortcut-title">Manage Patrollers</span>
+                     <span class="shortcut-desc">View all patrollers</span>
+                </a>
+
+                <a href="/admin/vehicles/fine/" class="shortcut-btn grad-violation">
+                    <span class="shortcut-title">Check Violations</span>
+                    <span class="shortcut-desc">View all outstanding fines</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1">
+             <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Recent Activity</h3>
+                <a href="/admin/users/customuser/" class="text-sm text-blue-500 hover:text-blue-400 font-bold">View all →</a>
+             </div>
+             
+             <div class="activity-container">
+                {% if recent_activity %}
+                    <div>
+                        {% for user in recent_activity %}
+                        <div class="activity-item">
+                            <div class="flex items-start space-x-4">
+                                <div class="flex-shrink-0">
+                                    <div class="avatar-circle">
+                                        {{ user.email|first|upper }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-gray-900 dark:text-white">
+                                        New user registered
+                                    </p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                        {{ user.email }}
+                                    </p>
+                                    <p class="text-xs text-gray-400 mt-1 font-mono">
+                                        {{ user.date_joined|timesince }} ago
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                         {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p style="color: var(--unfold-color-text-secondary); text-align: center; padding: 2rem;">No recent activity</p>
-            {% endif %}
+                    </div>
+                {% else %}
+                    <div class="py-8 text-center text-gray-500 italic">
+                        No recent activity found.
+                    </div>
+                {% endif %}
+             </div>
         </div>
     </div>
-
-    <!-- Quick Actions Section -->
-    {% if user.is_superuser %}
-    <div style="margin-top: 3rem;">
-        <h2 style="font-size: 1.5rem; font-weight: 400; margin-bottom: 1.5rem; color: var(--unfold-color-text-primary);">
-            Quick Actions
-        </h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-            <a href="/admin/parkings/parking/add/" style="background: #8b5cf6; color: white; padding: 1rem; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(139, 92, 246, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(139, 92, 246, 0.3)'">
-                + Add Parking
-            </a>
-            <a href="/admin/parkings/city/add/" style="background: #3b82f6; color: white; padding: 1rem; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(59, 130, 246, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(59, 130, 246, 0.3)'">
-                + Add City
-            </a>
-            <a href="/admin/users/customuser/add/" style="background: #ec4899; color: white; padding: 1rem; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 4px rgba(236, 72, 153, 0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(236, 72, 153, 0.4)'" onmouseout="this.style.transform=''; this.style.boxShadow='0 2px 4px rgba(236, 72, 153, 0.3)'">
-                + Add User
-            </a>
-        </div>
-    </div>
-    {% endif %}
 </div>
 {% endblock %}

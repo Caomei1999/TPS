@@ -81,7 +81,7 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
   void _adjustDuration(int deltaMinutes) {
     setState(() {
       _selectedDurationMinutes += deltaMinutes;
-      if (_selectedDurationMinutes < 10) _selectedDurationMinutes = 10;
+      if (_selectedDurationMinutes < 1) _selectedDurationMinutes = 1;
       if (_selectedDurationMinutes > 1440) _selectedDurationMinutes = 1440;
     });
     _recalculateAll();
@@ -108,9 +108,7 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
         content: Text('A session is already active. Redirecting...'),
       ),
     );
-    Navigator.of(context).push(
-      slideRoute(const RootPage(initialIndex: 1)),
-    );
+    Navigator.of(context).push(slideRoute(const RootPage(initialIndex: 1)));
   }
 
   void _showTariffDetailsDialog() {
@@ -120,8 +118,10 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title:
-            Text('Tariff Details', style: GoogleFonts.poppins(color: Colors.white)),
+        title: Text(
+          'Tariff Details',
+          style: GoogleFonts.poppins(color: Colors.white),
+        ),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,11 +131,18 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
               const Divider(color: Colors.white24),
               if (config.type == 'FIXED_DAILY')
                 _buildInfoRow(
-                    'Daily Rate', '€${config.dailyRate.toStringAsFixed(2)}'),
+                  'Daily Rate',
+                  '€${config.dailyRate.toStringAsFixed(2)}',
+                ),
               if (config.type != 'FIXED_DAILY') ...[
-                _buildInfoRow('Day Rate', '€${config.dayBaseRate.toStringAsFixed(2)}/h'),
                 _buildInfoRow(
-                    'Night Rate', '€${config.nightBaseRate.toStringAsFixed(2)}/h'),
+                  'Day Rate',
+                  '€${config.dayBaseRate.toStringAsFixed(2)}/h',
+                ),
+                _buildInfoRow(
+                  'Night Rate',
+                  '€${config.nightBaseRate.toStringAsFixed(2)}/h',
+                ),
               ],
             ],
           ),
@@ -143,8 +150,11 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close', style: TextStyle(color: Colors.blueAccent)),
-          )
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Colors.blueAccent),
+            ),
+          ),
         ],
       ),
     );
@@ -157,9 +167,13 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: GoogleFonts.poppins(color: Colors.white70)),
-          Text(value,
-              style: GoogleFonts.poppins(
-                  color: Colors.white, fontWeight: FontWeight.w600)),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -195,16 +209,23 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
     // ✅ Confirm dialog with "Pay with ..." + Change method
     while (true) {
       final payLabel = ref.read(paymentProvider).defaultMethodLabel;
-      final String endTimeStr = DateFormat('dd MMM yyyy, HH:mm').format(_plannedEndTime);
+      final String endTimeStr = DateFormat(
+        'dd MMM yyyy, HH:mm',
+      ).format(_plannedEndTime);
 
       final action = await showDialog<StartSessionConfirmAction>(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: const Color(0xFF020B3C),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             'Confirm Payment',
-            style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -213,10 +234,19 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
               children: [
                 _buildSessionSummary(durationStr, endTimeStr),
                 const SizedBox(height: 12),
-                Text('Payment method', style: GoogleFonts.poppins(color: Colors.white54, fontSize: 13)),
+                Text(
+                  'Payment method',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white54,
+                    fontSize: 13,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white10,
                     borderRadius: BorderRadius.circular(12),
@@ -224,7 +254,12 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                   ),
                   child: Row(
                     children: [
-                      Expanded(child: Text(payLabel, style: GoogleFonts.poppins(color: Colors.white))),
+                      Expanded(
+                        child: Text(
+                          payLabel,
+                          style: GoogleFonts.poppins(color: Colors.white),
+                        ),
+                      ),
                       Icon(Icons.payment, color: Colors.white54, size: 18),
                     ],
                   ),
@@ -235,32 +270,70 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () => Navigator.pop(context, StartSessionConfirmAction.changeMethod),
-                    style: FilledButton.styleFrom(backgroundColor: Colors.amber),
-                    child: Text('Change method', style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.w700)),
+                    onPressed: () => Navigator.pop(
+                      context,
+                      StartSessionConfirmAction.changeMethod,
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                    ),
+                    child: Text(
+                      'Change method',
+                      style: GoogleFonts.poppins(
+                        color: Colors.black,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 10),
-                Text('This amount is non-refundable.', style: GoogleFonts.poppins(color: Colors.white38, fontSize: 12)),
+                Text(
+                  'This amount is non-refundable.',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white38,
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
-          actionsPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          actionsPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
           actions: [
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 FilledButton(
-                  onPressed: () => Navigator.pop(context, StartSessionConfirmAction.cancel),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-                  child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                  onPressed: () =>
+                      Navigator.pop(context, StartSessionConfirmAction.cancel),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
-                  onPressed: () => Navigator.pop(context, StartSessionConfirmAction.confirm),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.greenAccent),
-                  child: Text('Pay & Start', style: GoogleFonts.poppins(color: Colors.black, fontWeight: FontWeight.w700)),
+                  onPressed: () =>
+                      Navigator.pop(context, StartSessionConfirmAction.confirm),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.greenAccent,
+                  ),
+                  child: Text(
+                    'Pay & Start',
+                    style: GoogleFonts.poppins(
+                      color: Colors.black,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -287,12 +360,7 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
 
     final paymentNotifier = ref.read(paymentProvider.notifier);
     // await paymentNotifier.charge(_prepaidCost);
-    await paymentNotifier.charge
-    (
-      _prepaidCost,
-      reason: 'Start Session',
-    );
-
+    await paymentNotifier.charge(_prepaidCost, reason: 'Start Session');
 
     final session = await _sessionService.startSession(
       vehicleId: _selectedVehicle!.id,
@@ -303,13 +371,15 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
 
     if (mounted) {
       if (session != null) {
-        ref.read(parkingControllerProvider.notifier).start(
-          sessionId: session.id,
-          vehicleId: session.vehicle!.id,
-          parkingLotId: session.parkingLot!.id,
-          startAt: session.startTime,
-          tariffConfig: widget.parkingLot.tariffConfig,
-        );
+        ref
+            .read(parkingControllerProvider.notifier)
+            .start(
+              sessionId: session.id,
+              vehicleId: session.vehicle!.id,
+              parkingLotId: session.parkingLot!.id,
+              startAt: session.startTime,
+              tariffConfig: widget.parkingLot.tariffConfig,
+            );
         Navigator.of(context).push(slideRoute(const RootPage(initialIndex: 1)));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -344,11 +414,21 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(widget.parkingLot.name,
-                        style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w700)),
+                    Text(
+                      widget.parkingLot.name,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(widget.parkingLot.address,
-                        style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
+                    Text(
+                      widget.parkingLot.address,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -364,7 +444,10 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
               Expanded(
                 child: Text(
                   '${_selectedVehicle?.plate ?? '—'} • ${_selectedVehicle?.name ?? ''}',
-                  style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -380,9 +463,21 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(durationStr, style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                    Text(
+                      durationStr,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text('Ends: $endTimeStr', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
+                    Text(
+                      'Ends: $endTimeStr',
+                      style: GoogleFonts.poppins(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -394,9 +489,17 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13)),
-              Text('€${_prepaidCost.toStringAsFixed(2)}',
-                  style: GoogleFonts.poppins(color: Colors.greenAccent, fontWeight: FontWeight.w800)),
+              Text(
+                'Total',
+                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13),
+              ),
+              Text(
+                '€${_prepaidCost.toStringAsFixed(2)}',
+                style: GoogleFonts.poppins(
+                  color: Colors.greenAccent,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
         ],
@@ -469,17 +572,19 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
         children: [
           IconButton(
             icon: const Icon(IconlyLight.arrow_left, color: Colors.white),
-            onPressed: () => Navigator.of(context)
-                .push(slideRoute(const RootPage(initialIndex: 0))),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(slideRoute(const RootPage(initialIndex: 0))),
           ),
           Expanded(
             child: Center(
               child: Text(
                 'Start Session',
                 style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w500),
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
@@ -504,7 +609,10 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
           Text(
             widget.parkingLot.name,
             style: GoogleFonts.poppins(
-                color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
           ),
           Text(
@@ -526,20 +634,24 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(IconlyLight.info_circle,
-                      color: Colors.blueAccent, size: 18),
+                  const Icon(
+                    IconlyLight.info_circle,
+                    color: Colors.blueAccent,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     _getTariffLabel(),
                     style: GoogleFonts.poppins(
-                        color: Colors.blueAccent,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12),
+                      color: Colors.blueAccent,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -554,7 +666,9 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
 
   Widget _buildDailyDurationSelector() {
     final int days = _selectedDurationMinutes ~/ 1440;
-    final String endTimeStr = DateFormat('dd MMM, HH:mm').format(_plannedEndTime);
+    final String endTimeStr = DateFormat(
+      'dd MMM, HH:mm',
+    ).format(_plannedEndTime);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -572,35 +686,43 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('FLAT COST',
-                      style: GoogleFonts.poppins(
-                          color: Colors.amber,
-                          fontSize: 12,
-                          letterSpacing: 1,
-                          fontWeight: FontWeight.bold)),
+                  Text(
+                    'FLAT COST',
+                    style: GoogleFonts.poppins(
+                      color: Colors.amber,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   Text(
                     '€${_prepaidCost.toStringAsFixed(2)}',
                     style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('VALID UNTIL',
-                      style: GoogleFonts.poppins(
-                          color: Colors.white54,
-                          fontSize: 12,
-                          letterSpacing: 1)),
+                  Text(
+                    'VALID UNTIL',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                    ),
+                  ),
                   Text(
                     endTimeStr,
                     style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600),
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -611,7 +733,9 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildBigCircleButton(
-                  icon: Icons.remove, onTap: () => _adjustDays(-1)),
+                icon: Icons.remove,
+                onTap: () => _adjustDays(-1),
+              ),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 20),
                 width: 140,
@@ -621,26 +745,35 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                     Text(
                       '$days',
                       style: GoogleFonts.poppins(
-                          fontSize: 50,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                        fontSize: 50,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                     Text(
                       days == 1 ? 'Day' : 'Days',
-                      style: GoogleFonts.poppins(fontSize: 18, color: Colors.white54),
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        color: Colors.white54,
+                      ),
                     ),
                   ],
                 ),
               ),
               _buildBigCircleButton(
-                  icon: Icons.add, onTap: () => _adjustDays(1)),
+                icon: Icons.add,
+                onTap: () => _adjustDays(1),
+              ),
             ],
           ),
           const SizedBox(height: 15),
           Text(
             "Fixed price per 24h. Covers full day.",
             style: GoogleFonts.poppins(
-                color: Colors.white30, fontSize: 12, fontStyle: FontStyle.italic),
+              color: Colors.white30,
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ],
       ),
@@ -668,30 +801,42 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TOTAL COST',
-                      style: GoogleFonts.poppins(
-                          color: Colors.white54, fontSize: 12, letterSpacing: 1)),
+                  Text(
+                    'TOTAL COST',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                    ),
+                  ),
                   Text(
                     '€${_prepaidCost.toStringAsFixed(2)}',
                     style: GoogleFonts.poppins(
-                        color: Colors.greenAccent,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.greenAccent,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('ENDS AT',
-                      style: GoogleFonts.poppins(
-                          color: Colors.white54, fontSize: 12, letterSpacing: 1)),
+                  Text(
+                    'ENDS AT',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white54,
+                      fontSize: 12,
+                      letterSpacing: 1,
+                    ),
+                  ),
                   Text(
                     endTimeStr,
                     style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600),
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -703,7 +848,10 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildBigCircleButton(icon: Icons.remove, onTap: () => _adjustDuration(-1)),
+              _buildBigCircleButton(
+                icon: Icons.remove,
+                onTap: () => _adjustDuration(-1),
+              ),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 15),
                 width: 180,
@@ -713,28 +861,43 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                   text: TextSpan(
                     children: [
                       TextSpan(
-                          text: '$hours',
-                          style: GoogleFonts.poppins(
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white)),
+                        text: '$hours',
+                        style: GoogleFonts.poppins(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                       TextSpan(
-                          text: 'h ',
-                          style: GoogleFonts.poppins(fontSize: 20, color: Colors.white70)),
+                        text: 'h ',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          color: Colors.white70,
+                        ),
+                      ),
                       TextSpan(
-                          text: '$minutes',
-                          style: GoogleFonts.poppins(
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white)),
+                        text: '$minutes',
+                        style: GoogleFonts.poppins(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                       TextSpan(
-                          text: 'm',
-                          style: GoogleFonts.poppins(fontSize: 20, color: Colors.white70)),
+                        text: 'm',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          color: Colors.white70,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-              _buildBigCircleButton(icon: Icons.add, onTap: () => _adjustDuration(1)),
+              _buildBigCircleButton(
+                icon: Icons.add,
+                onTap: () => _adjustDuration(1),
+              ),
             ],
           ),
 
@@ -751,9 +914,10 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
             ),
             child: Slider(
               value: _selectedDurationMinutes.toDouble(),
-              min: 10,
+              min: 1,
               max: 1440,
-              divisions: (1440 - 10) ~/ 10,
+              divisions: 1440,
+              //divisions: (1440 - 10) ~/ 10,
               onChanged: (val) {
                 setState(() {
                   _selectedDurationMinutes = val.toInt();
@@ -769,22 +933,62 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildQuickButton('+10m', 10, color: Colors.greenAccent.withOpacity(0.2)),
-              _buildQuickButton('+15m', 15, color: Colors.greenAccent.withOpacity(0.2)),
-              _buildQuickButton('+30m', 30, color: Colors.greenAccent.withOpacity(0.2)),
-              _buildQuickButton('+1h', 60, color: Colors.greenAccent.withOpacity(0.2)),
-              _buildQuickButton('+2h', 120, color: Colors.greenAccent.withOpacity(0.2)),
+              _buildQuickButton(
+                '+10m',
+                10,
+                color: Colors.greenAccent.withOpacity(0.2),
+              ),
+              _buildQuickButton(
+                '+15m',
+                15,
+                color: Colors.greenAccent.withOpacity(0.2),
+              ),
+              _buildQuickButton(
+                '+30m',
+                30,
+                color: Colors.greenAccent.withOpacity(0.2),
+              ),
+              _buildQuickButton(
+                '+1h',
+                60,
+                color: Colors.greenAccent.withOpacity(0.2),
+              ),
+              _buildQuickButton(
+                '+2h',
+                120,
+                color: Colors.greenAccent.withOpacity(0.2),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildQuickButton('-10m', -10, color: Colors.redAccent.withOpacity(0.2)),
-              _buildQuickButton('-15m', -15, color: Colors.redAccent.withOpacity(0.2)),
-              _buildQuickButton('-30m', -30, color: Colors.redAccent.withOpacity(0.2)),
-              _buildQuickButton('-1h', -60, color: Colors.redAccent.withOpacity(0.2)),
-              _buildQuickButton('-2h', -120, color: Colors.redAccent.withOpacity(0.2)),
+              _buildQuickButton(
+                '-10m',
+                -10,
+                color: Colors.redAccent.withOpacity(0.2),
+              ),
+              _buildQuickButton(
+                '-15m',
+                -15,
+                color: Colors.redAccent.withOpacity(0.2),
+              ),
+              _buildQuickButton(
+                '-30m',
+                -30,
+                color: Colors.redAccent.withOpacity(0.2),
+              ),
+              _buildQuickButton(
+                '-1h',
+                -60,
+                color: Colors.redAccent.withOpacity(0.2),
+              ),
+              _buildQuickButton(
+                '-2h',
+                -120,
+                color: Colors.redAccent.withOpacity(0.2),
+              ),
             ],
           ),
         ],
@@ -792,7 +996,10 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
     );
   }
 
-  Widget _buildBigCircleButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _buildBigCircleButton({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(40),
@@ -804,7 +1011,11 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white30, width: 1.5),
           boxShadow: [
-            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
           ],
         ),
         child: Icon(icon, color: Colors.white, size: 30),
@@ -821,12 +1032,18 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
         height: 35,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-            color: color ?? Colors.white.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white10)),
-        child: Text(label,
-            style: GoogleFonts.poppins(
-                color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+          color: color ?? Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -863,7 +1080,8 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                   color: isSelected ? Colors.blueAccent : Colors.white10,
                   borderRadius: BorderRadius.circular(15),
                   border: Border.all(
-                      color: isSelected ? Colors.white : Colors.transparent),
+                    color: isSelected ? Colors.white : Colors.transparent,
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -871,18 +1089,29 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(v.plate,
-                            style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16)),
-                        Text(v.name,
-                            style: GoogleFonts.poppins(
-                                color: Colors.white70, fontSize: 13)),
+                        Text(
+                          v.plate,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          v.name,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
                     if (isSelected)
-                      const Icon(Icons.check_circle, color: Colors.white, size: 24)
+                      const Icon(
+                        Icons.check_circle,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                   ],
                 ),
               ),
@@ -914,11 +1143,16 @@ class _StartSessionScreenState extends ConsumerState<StartSessionScreen> {
                   height: 24,
                   width: 24,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.black))
+                    strokeWidth: 2,
+                    color: Colors.black,
+                  ),
+                )
               : Text(
                   'GO TO CHECKOUT',
                   style: GoogleFonts.poppins(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
         ),
       ),

@@ -5,7 +5,6 @@ from .views import (
     CustomTokenObtainPairView,
     ManagerTokenObtainPairView,
     ControllerTokenObtainPairView,
-    UserTokenObtainPairView,
     ChangePasswordView, 
     DeleteAccountView,
     PasswordResetRequestView, 
@@ -15,6 +14,7 @@ from .views import (
     CurrentShiftView,
     ShiftHistoryView,
     ActiveOfficersView,
+    ReportViolationView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -28,7 +28,7 @@ urlpatterns = [
     # Role-specific login endpoints
     path('token/manager/', ManagerTokenObtainPairView.as_view(), name='token_obtain_pair_manager'),
     path('token/controller/', ControllerTokenObtainPairView.as_view(), name='token_obtain_pair_controller'),
-    path('token/user/', UserTokenObtainPairView.as_view(), name='token_obtain_pair_user'),
+
     
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
@@ -46,4 +46,5 @@ urlpatterns = [
     path('shifts/end/', EndShiftView.as_view(), name='end_shift'),
     path('shifts/history/', ShiftHistoryView.as_view(), name='shift_history'),
     path('shifts/active-officers/', ActiveOfficersView.as_view(), name='active_officers'),
+    path('violations/report/', ReportViolationView.as_view(), name='report_violation'),
 ]

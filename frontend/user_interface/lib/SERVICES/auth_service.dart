@@ -50,10 +50,19 @@ class AuthService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        return null;
+        try {
+          final Map<String, dynamic> body = json.decode(response.body);
+          if (body.containsKey('detail')) {
+            throw Exception(body['detail']);
+          }
+        } catch (e) {
+          if (e.toString().startsWith("Exception:")) rethrow;
+        }
+
+        throw Exception('Login failed. Please check your credentials.');
       }
     } catch (e) {
-      return null;
+      rethrow;
     }
   }
 

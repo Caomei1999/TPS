@@ -68,26 +68,37 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    final result = await _authService.login(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (result != null) {
-      final accessToken = result['access'];
-      final refreshToken = result['refresh'];
-
-      await _storageService.saveTokens(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
+    try {
+      final result = await _authService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
-      _navigateToMain();
-    } else {
-      _showErrorSnackbar('Access failed, Invalid credantials.');
+      if (result != null) {
+        final accessToken = result['access'];
+        final refreshToken = result['refresh'];
+
+        await _storageService.saveTokens(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        );
+
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          _navigateToMain();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+
+      String errorMessage = e.toString().replaceAll("Exception: ", "");
+
+      _showErrorSnackbar(errorMessage);
     }
   }
 

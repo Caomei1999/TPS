@@ -8,7 +8,7 @@ from parkings.models import Parking
 from django.utils import timezone
 from datetime import timedelta
 import json
-
+from .models import Vehicle, Fine
 # OCR imports
 import os
 import re
@@ -91,22 +91,21 @@ class VehicleViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+
 class ParkingSessionViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for managing parking sessions
+    User Side: Managing parking sessions
     """
     serializer_class = ParkingSessionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Return sessions for the authenticated user
         if self.request.user.is_authenticated:
             return ParkingSession.objects.filter(user=self.request.user)
         return ParkingSession.objects.none()
 
     @action(detail=False, methods=['get'])
     def active(self, request):
-        """Get all active sessions for the current user"""
         active_sessions = self.get_queryset().filter(is_active=True)
         serializer = self.get_serializer(active_sessions, many=True)
         return Response(serializer.data)
@@ -116,14 +115,18 @@ class ParkingSessionViewSet(viewsets.ModelViewSet):
         vehicle = serializer.validated_data['vehicle']
         parking_lot = serializer.validated_data['parking_lot']
 
-        duration_minutes = serializer.validated_data.pop('duration_purchased_minutes')
+        duration_minutes = serializer.validated_data.pop('duration_purchased_minutes', 0)
 
-        # Ricalcolo di sicurezza sul server
         prepaid_cost_server = calculate_prepaid_cost(parking_lot, duration_minutes)
 
         start_time = timezone.now()
-        duration_delta = timedelta(minutes=duration_minutes)
-        planned_end_time = start_time + duration_delta
+        
+        if duration_minutes > 0:
+            end_time = start_time + timedelta(minutes=duration_minutes)
+            planned_end_time = end_time
+        else:
+            end_time = None
+            planned_end_time = None
 
         if vehicle.user != user:
             raise serializers.ValidationError("You do not own this vehicle.")
@@ -135,6 +138,7 @@ class ParkingSessionViewSet(viewsets.ModelViewSet):
             user=user,
             start_time=start_time,
             planned_end_time=planned_end_time,
+            end_time=end_time, 
             duration_purchased_minutes=duration_minutes,
             prepaid_cost=prepaid_cost_server,
             total_cost=prepaid_cost_server,
@@ -142,88 +146,124 @@ class ParkingSessionViewSet(viewsets.ModelViewSet):
             is_expired=False,
             expired_at=None,
         )
-
     @action(detail=True, methods=['post'])
     def end_session(self, request, pk=None):
         session = self.get_object()
-
-        if session.user != request.user:
-            return Response({'error': 'Not your session.'}, status=status.HTTP_403_FORBIDDEN)
-
+        
         if not session.is_active:
-            return Response({'error': 'Session is already completed.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'Session is already active/ended.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        session.end_session()
-
+        session.end_session() 
         serializer = self.get_serializer(session)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
     @action(detail=False, methods=['get'])
     def search_by_plate(self, request):
-        plate = request.query_params.get('plate', '').upper()
-
+        plate = request.query_params.get('plate')
         if not plate:
-            return Response({'error': 'Plate parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Plate parameter is required."}, status=400)
 
-        try:
-            vehicle = Vehicle.objects.get(plate=plate)
-        except Vehicle.DoesNotExist:
-            return Response({'status': 'Vehicle Not Found'}, status=status.HTTP_404_NOT_FOUND)
+        sessions = ParkingSession.objects.filter(
+            vehicle__plate__iexact=plate
+        ).order_by('-start_time')
 
-        try:
-            session = ParkingSession.objects.get(vehicle=vehicle, is_active=True)
+        if not sessions.exists():
+            return Response({
+                "status": "no_session",
+                "can_issue_ticket": True,
+                "message": f"No session found for {plate}. Issue Ticket?",
+                "session_data": None
+            }, status=200)
 
-            user = request.user
-            if not user.is_superuser:
-                allowed_cities = getattr(user, 'allowed_cities', [])
+        session = sessions.first()
+        
+        session_data = ParkingSessionSerializer(session).data
+        
+        now = timezone.now()
+        grace_minutes = getattr(session, 'grace_period_minutes', 15)
 
-                if allowed_cities and isinstance(allowed_cities, list):
+        reference_time = None
+        
+        if session.planned_end_time:
+            if session.end_time:
+                if session.end_time > session.planned_end_time:
+                    reference_time = session.planned_end_time
+                else:
+                    reference_time = session.end_time
+            else:
 
-                    if session.parking_lot and session.parking_lot.city not in allowed_cities:
-                        return Response(
-                            {'status': 'No Active Session Found in your jurisdiction'},
-                            status=status.HTTP_404_NOT_FOUND
-                        )
+                reference_time = session.planned_end_time
+        else:
+            if session.end_time:
+                reference_time = session.end_time
+            else:
 
-            now = timezone.now()
+                reference_time = now 
 
-            # Controllo Scadenza
-            if not session.is_expired and now > session.planned_end_time:
-                session.is_expired = True
-                session.expired_at = session.planned_end_time
-                session.save()
+        grace_end_time_utc = reference_time + timedelta(minutes=grace_minutes)
 
-            # Controllo Sanzionabilità (Es. 24h di tolleranza dopo la scadenza)
-            is_sanctionable = True
-            if session.is_expired and now > (session.expired_at + timedelta(hours=24)):
-                is_sanctionable = False
+        grace_end_time_local_str = timezone.localtime(grace_end_time_utc).strftime('%H:%M')
 
-            serializer = ControllerParkingSessionSerializer(session)
+        status_code = "active"
+        can_issue_ticket = False
+        message = "Session is active."
 
-            response_data = serializer.data
-            response_data['is_sanctionable'] = is_sanctionable
+        if not session.planned_end_time and not session.end_time:
+            return Response({
+                "status": "active",
+                "can_issue_ticket": False,
+                "message": "Session is active (Ongoing).",
+                "session_data": session_data
+            }, status=200)
 
-            return Response(response_data)
+        if now < reference_time:
+            status_code = "active"
+            can_issue_ticket = False
+            message = "Session is active."
+        
+        elif now < grace_end_time_utc:
+            status_code = "grace_period"
+            can_issue_ticket = False
+            message = f"In Grace Period (Expires at {grace_end_time_local_str})"
+            
 
-        except ParkingSession.DoesNotExist:
-            return Response({'status': 'No Active Session Found'}, status=status.HTTP_404_NOT_FOUND)
-        except ParkingSession.MultipleObjectsReturned:
-            return Response({'error': 'Multiple active sessions found (System Error)'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            session_data['end_time'] = reference_time
+            
+        else:
+            status_code = "expired"
+            can_issue_ticket = True
+            message = "Session expired. You can issue a ticket."
 
+            session_data['end_time'] = reference_time
 
-# =========================
-# ✅ 新增：Plate OCR API（云 API 识别）
-# URL: POST /api/plate-ocr/
-# Header: Authorization: Bearer <access_token>
-# Body: multipart/form-data, field name "image"
-# =========================
+        user = request.user
+        if not (user.is_superuser or (hasattr(user, 'role') and user.role == 'superuser')):
+            if hasattr(user, 'role') and user.role == 'controller':
+                if session.parking_lot:
+                    lot_city = session.parking_lot.city
+                    allowed = getattr(user, 'allowed_cities', [])
+                    if not allowed: allowed = []
+                    
+                    if lot_city not in allowed:
+                        return Response({
+                            "detail": f"Unauthorized city: {lot_city}"
+                        }, status=403)
+
+        return Response({
+            "status": status_code,            
+            "can_issue_ticket": can_issue_ticket,
+            "message": message,
+            "session_data": session_data
+        }, status=200)
+    
+
 
 def normalize_plate(raw: str) -> str:
     if not raw:
         return ""
     s = raw.strip().upper()
-    # 只保留字母数字，去掉空格/横线/点号等
     s = re.sub(r"[^A-Z0-9]", "", s)
     return s
 
@@ -250,11 +290,9 @@ class PlateOCRView(APIView):
         url = "https://api.platerecognizer.com/v1/plate-reader/"
         headers = {"Authorization": f"Token {token}"}
 
-        # 可选：地区提示（意大利）
         data = {"regions": "it"}
 
         try:
-            # 注意：img.read() 会消耗流，所以这里直接读 bytes
             img_bytes = img.read()
             resp = requests.post(
                 url,
