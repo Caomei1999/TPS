@@ -1,12 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:officer_interface/services/authentication%20helpers/authenticated%20_http_client.dart';
 
 class ControllerService {
   static final AuthenticatedHttpClient _httpClient = AuthenticatedHttpClient();
-  static const String _apiRoot = 'http://127.0.0.1:8000/api';
-  // static const String _apiRoot = 'http://10.0.2.2:8000/api';
+  static const String _apiRoot = 'http://10.0.2.2:8000/api';
 
-  // Calls: api/sessions/search_by_plate/?plate=XXXXXX
   static Future<Map<String, dynamic>?> searchActiveSessionByPlate(
     String plate,
   ) async {
@@ -32,10 +31,25 @@ class ControllerService {
     }
   }
 
-  static Future<int> reportViolation(String plate) async {
+  static Future<int> reportViolation({
+    required String plate, 
+    required String reason, 
+    required String notes, 
+    File? image
+  }) async {
     final url = Uri.parse('$_apiRoot/users/violations/report/');
+    
     try {
-      final response = await _httpClient.post(url, body: {'plate': plate});
+      final response = await _httpClient.postMultipart(
+        url,
+        fields: {
+          'plate': plate,
+          'reason': reason,
+          'notes': notes,
+        },
+        imageFile: image,
+        imageFieldName: 'image', 
+      );
 
       return response.statusCode;
     } catch (e) {

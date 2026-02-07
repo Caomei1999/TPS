@@ -5,6 +5,7 @@ from .models import Vehicle, ParkingSession, Fine
 from users.models import CustomUser
 from unfold.decorators import display
 from django.contrib import messages
+from django.utils.html import format_html 
 
 class VehicleAdminForm(forms.ModelForm):
     class Meta:
@@ -33,7 +34,6 @@ def reset_owner_standing(modeladmin, request, queryset):
     count = 0
     for fine in queryset:
         user = fine.vehicle.user
-
         if user and (user.violations_count > 0 or not user.is_active):
             user.violations_count = 0
             user.is_active = True
@@ -48,40 +48,58 @@ def reset_owner_standing(modeladmin, request, queryset):
 
 @admin.register(Fine)
 class FineAdmin(ModelAdmin):
-    list_display = ('id', 'vehicle_plate', 'vehicle_owner', 'owner_violations', 'amount_display', 'reason', 'status_badge', 'issued_at', 'issued_by')
+    list_display = ('id', 'vehicle_plate', 'amount_display', 'status_badge', 'contest_info', 'issued_at')
     
-    list_filter = ('status', 'issued_at')
+    # FILTRI: Aggiungi 'is_disputed_filter' per trovare subito le contestazioni
+    list_filter = ('status', 'reason', 'issued_at')
+    
+    search_fields = ('vehicle__plate', 'reason', 'id', 'vehicle__user__email', 'contestation_reason')
+    
+    readonly_fields = ("issued_at", "contest_text_display")
 
-    search_fields = ('vehicle__plate', 'reason', 'id', 'vehicle__user__email')
-    
-    actions = [reset_owner_standing]
-    
     fieldsets = (
         ("Violation Details", {
             "fields": ("vehicle", "session", "issued_by", "reason", "amount")
         }),
-        ("Status & Time", {
-            "fields": ("status", "issued_at", "paid_at")
+        # SEZIONE DEDICATA ALLA CONTESTAZIONE
+        ("Contestation Management", {
+            "classes": ("collapse", "open"), # Aperto di default se vuoi vederlo subito
+            "description": "Review the user's contestation. Change Status to 'Cancelled' to accept, or 'Unpaid' to reject.",
+            "fields": ("contestation_reason", "contest_text_display", "notes") 
+        }),
+        ("Evidence", { 
+            "fields": ("evidence_image",) 
+        }),
+        ("Status & Action", {
+            "fields": ("status", "issued_at")
         }),
     )
+
+    # Colonna personalizzata nella lista per vedere se c'è una contestazione
+    def contest_info(self, obj):
+        if obj.status == 'disputed':
+            return format_html('<span style="color:orange; font-weight:bold;">⚠️ PENDING REVIEW</span>')
+        if obj.contestation_reason and obj.status == 'cancelled':
+            return format_html('<span style="color:green;">Accepted</span>')
+        if obj.contestation_reason and obj.status == 'unpaid':
+             return format_html('<span style="color:red;">Rejected</span>')
+        return "-"
+    contest_info.short_description = "Dispute Status"
+
+    # Mostra il testo della contestazione in sola lettura (più leggibile)
+    def contest_text_display(self, obj):
+        return obj.contestation_reason
+    contest_text_display.short_description = "User's Reason"
 
     @display(description="Status", label=True)
     def status_badge(self, obj):
         colors = {
-            'unpaid': 'danger',      
-            'paid': 'success',       
-            'disputed': 'warning',   
-            'cancelled': 'secondary',
+            'unpaid',      
+            'paid',       
+            'disputed',   
+            'cancelled', 
         }
-        return obj.get_status_display(), colors.get(obj.status, 'primary')
-
-    def vehicle_owner(self, obj):
-        return obj.vehicle.user.email
-    vehicle_owner.short_description = "Owner Account"
-
-    def owner_violations(self, obj):
-        return obj.vehicle.user.violations_count
-    owner_violations.short_description = "Violations"
+        return obj.get_status_display() 
 
     def vehicle_plate(self, obj):
         return obj.vehicle.plate
@@ -90,3 +108,7 @@ class FineAdmin(ModelAdmin):
     def amount_display(self, obj):
         return f"€ {obj.amount}"
     amount_display.short_description = "Amount"
+    
+    # Nascondi l'azione standard di delete se vuoi forzare l'uso del cambio stato
+    # def has_delete_permission(self, request, obj=None):
+    #    return False

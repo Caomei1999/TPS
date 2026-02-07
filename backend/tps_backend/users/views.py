@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -21,6 +22,7 @@ from .models import Shift
 from .serializers import ShiftSerializer
 from django.utils import timezone
 from vehicles.models import Vehicle, Fine
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -400,60 +402,172 @@ class ActiveOfficersView(APIView):
         }, status=status.HTTP_200_OK)
 
 class ReportViolationView(APIView):
-    """
-    Endpoint for Officers to report a violation for a specific plate.
-    POST /api/users/violations/report/
-    Body: { "plate": "AB123CD", "reason": "Illegal Parking" }
-    """
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser) # Necessario per le immagini
 
     def post(self, request):
-
         if request.user.role not in ['controller', 'manager', 'superuser']:
-            return Response(
-                {"detail": "Permission denied. Only officials can report violations."}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
 
         plate = request.data.get('plate')
-        if not plate:
-            return Response({"detail": "Plate is required."}, status=status.HTTP_400_BAD_REQUEST)
+        reason = request.data.get('reason')
+        notes = request.data.get('notes', '')
+        image = request.FILES.get('image') # Recupera il file
+
+        if not plate or not reason:
+            return Response({"detail": "Plate and reason are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mappa dei prezzi lato server (Single Source of Truth)
+        violation_prices = {
+            'No Active Session': 50.00,
+            'Obstructing Parking': 85.00,       # Esempio prezzo maggiorato
+            'Handicapped Zone Violation': 150.00 # Esempio prezzo massimo
+        }
+
+        # Validazione della ragione
+        if reason not in violation_prices:
+            return Response({"detail": "Invalid violation reason."}, status=status.HTTP_400_BAD_REQUEST)
+
+        amount = violation_prices[reason]
 
         try:
-
             vehicle = Vehicle.objects.get(plate__iexact=plate)
             user = vehicle.user
-            
 
+            # Logica blocco account
             user.violations_count += 1
-            
-
             if user.violations_count >= 3:
                 user.is_active = False 
-                user.save()
+            user.save()
 
-            else:
-                user.save()
-
+            # Creazione Multa con immagine e note
             fine = Fine.objects.create(
                 vehicle=vehicle,
                 issued_by=request.user,  
-                amount=50.00,            
-                reason=request.data.get('reason', 'Illegal Parking'),
+                amount=amount,            
+                reason=reason,
+                notes=notes,
+                evidence_image=image, # Salva l'immagine
                 status='unpaid'
             )
 
             return Response({
                 "message": "Violation reported successfully.",
                 "fine_id": fine.id,  
+                "amount": amount,
                 "plate": vehicle.plate,
-                "owner_email": user.email,
                 "new_violation_count": user.violations_count,
-                "account_blocked": not user.is_active  
             }, status=status.HTTP_201_CREATED)
 
         except Vehicle.DoesNotExist:
-            return Response(
-                {"detail": "Vehicle not found."}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"detail": "Vehicle not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+
+class UserFinesView(APIView):
+    """
+    GET /api/users/me/fines/
+    Restituisce tutte le multe associate ai veicoli dell'utente.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        # Recupera le multe dei veicoli dell'utente
+        fines = Fine.objects.filter(vehicle__user=user).order_by('-issued_at')
+        
+        data = []
+        for fine in fines:
+            data.append({
+                'id': fine.id,
+                'vehicle_plate': fine.vehicle.plate,
+                'vehicle_name': fine.vehicle.name,
+                'amount': fine.amount,
+                'reason': fine.reason,
+                'status': fine.status,
+                'issued_at': fine.issued_at,
+                'notes': fine.notes if hasattr(fine, 'notes') else "",
+            })
+            
+        return Response(data, status=status.HTTP_200_OK)
+
+class PayFineView(APIView):
+    """
+    POST /api/users/fines/<id>/pay/
+    Paga una multa e riduce il conteggio violazioni dell'utente.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        user = request.user
+        # Assicurati che la multa appartenga a un veicolo dell'utente
+        fine = get_object_or_404(Fine, pk=pk, vehicle__user=user)
+
+        if fine.status == 'paid':
+            return Response({"detail": "Fine is already paid."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Segna la multa come pagata
+        fine.status = 'paid'
+        fine.paid_at = timezone.now() # Assicurati di avere questo campo o rimuovi questa riga
+        fine.save()
+
+        # 2. Riduci il violations_count dell'utente
+        if user.violations_count > 0:
+            user.violations_count -= 1
+            
+            # Se era bannato (3 o più), riattivalo se scende sotto 3
+            if user.violations_count < 3 and not user.is_active:
+                user.is_active = True
+            
+            user.save()
+
+        return Response({
+            "message": "Fine paid successfully", 
+            "new_violation_count": user.violations_count
+        }, status=status.HTTP_200_OK)
+    
+# Aggiungi PayFineView e UserFinesView se non ci sono, e MODIFICA UserFinesView + AGGIUNGI ContestFineView
+
+class UserFinesView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        fines = Fine.objects.filter(vehicle__user=request.user).order_by('-issued_at')
+        data = []
+        for fine in fines:
+            data.append({
+                'id': fine.id,
+                'vehicle_plate': fine.vehicle.plate,
+                'amount': fine.amount,
+                'reason': fine.reason,
+                'status': fine.status,
+                'issued_at': fine.issued_at,
+                'notes': fine.notes if hasattr(fine, 'notes') else "",
+                # NUOVO: Inviamo la ragione della contestazione al frontend
+                'contestation_reason': fine.contestation_reason 
+            })
+        return Response(data, status=status.HTTP_200_OK)
+
+class ContestFineView(APIView):
+    """
+    POST /api/users/fines/<id>/contest/
+    Permette all'utente di contestare una multa.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        user = request.user
+        fine = get_object_or_404(Fine, pk=pk, vehicle__user=user)
+        
+        reason = request.data.get('reason')
+        if not reason:
+            return Response({"detail": "Reason is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if fine.status != 'unpaid':
+            return Response({"detail": "Only unpaid fines can be contested."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Aggiorna lo stato e salva la motivazione
+        fine.status = 'disputed'
+        fine.contestation_reason = reason
+        fine.save()
+
+        return Response({"message": "Fine contested successfully. Status is now pending review."}, status=status.HTTP_200_OK)

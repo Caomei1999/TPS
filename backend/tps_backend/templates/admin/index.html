@@ -103,9 +103,9 @@
     .activity-item {
         padding: 16px 0;
         border-bottom: 1px solid #e5e7eb;
+        position: relative;
     }
     .activity-item:last-child { border-bottom: none; }
-    
     .avatar-circle {
         width: 42px;
         height: 42px;
@@ -117,7 +117,26 @@
         font-size: 1rem;
         background-color: #eff6ff;
         color: #3b82f6;
+        margin-right: 22px; /* Aggiunto spazio extra */
     }
+    .activity-main-content {
+        display: flex;
+        flex: 1;
+        min-width: 0;
+        align-items: flex-start;
+    }
+    .activity-amount {
+        position: absolute;
+        top: 0;
+        right: 0;
+        font-weight: bold;
+        font-size: 1.1rem;
+        padding: 0.5rem 1rem 0 1rem;
+        z-index: 2;
+        background: transparent;
+        /* Colore dinamico via classe */
+    }
+    
     .dark .insight-label { color: #9ca3af; } 
     .dark .activity-item { border-bottom-color: #374151; }
     .dark .avatar-circle { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
@@ -162,9 +181,9 @@
             </div>
 
             <div class="stat-card">
-                <div class="insight-number text-neon-red">{{ stats.unpaid_violations|default:"0" }}</div>
-                <div class="insight-label">Unpaid Violations</div>
-                <div class="insight-sub text-gray-400">{{ stats.new_violations_today|default:"0" }} new</div>
+                <div class="insight-number text-neon-red">{{ stats.active_violations_count|default:"0" }}</div>
+                <div class="insight-label">Active Violations</div>
+                <div class="insight-sub text-neon-orange" style="font-weight: 800;">{{ stats.pending_disputes|default:"0" }} Pending </div>
             </div>
         </div>
     </div>
@@ -220,32 +239,56 @@
         <div class="lg:col-span-1">
              <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white">Recent Activity</h3>
-                <a href="/admin/users/customuser/" class="text-sm text-blue-500 hover:text-blue-400 font-bold">View all →</a>
              </div>
              
              <div class="activity-container">
                 {% if recent_activity %}
                     <div>
-                        {% for user in recent_activity %}
+                        {% for item in recent_activity %}
                         <div class="activity-item">
-                            <div class="flex items-start space-x-4">
+                            <div class="activity-main-content">
                                 <div class="flex-shrink-0">
-                                    <div class="avatar-circle">
-                                        {{ user.email|first|upper }}
-                                    </div>
+                                    {% if item.type == 'user' %}
+                                        <div class="avatar-circle" style="background-color: rgba(59, 130, 246, 0.15); color: #3b82f6; font-family: sans-serif;">
+                                            U
+                                        </div>
+                                    {% elif item.type == 'session' %}
+                                        <div class="avatar-circle" style="background-color: rgba(245, 158, 11, 0.15); color: #f59e0b; font-family: sans-serif;">
+                                            P
+                                        </div>
+                                    {% elif item.type == 'fine_payment' %}
+                                        <div class="avatar-circle" style="background-color: rgba(16, 185, 129, 0.15); color: #10b981; font-family: sans-serif;">
+                                            €
+                                        </div>
+                                    {% elif item.type == 'fine_issued' %}
+                                        <div class="avatar-circle" style="background-color: rgba(239, 68, 68, 0.15); color: #ef4444; font-family: sans-serif;">
+                                            V
+                                        </div>
+                                    {% endif %}
                                 </div>
-                                <div>
-                                    <p class="text-sm font-bold text-gray-900 dark:text-white">
-                                        New user registered
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-bold text-gray-900 dark:text-white truncate">
+                                        {{ item.title }}
                                     </p>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                        {{ user.email }}
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                                        {{ item.identifier }}
                                     </p>
                                     <p class="text-xs text-gray-400 mt-1 font-mono">
-                                        {{ user.date_joined|timesince }} ago
+                                        {{ item.timestamp|timesince }} ago
                                     </p>
                                 </div>
                             </div>
+                            {% if item.amount %}
+                                {% if item.type == 'fine_issued' %}
+                                    <div class="activity-amount text-neon-red">
+                                        €{{ item.amount }}
+                                    </div>
+                                {% else %}
+                                    <div class="activity-amount text-neon-green">
+                                        +€{{ item.amount }}
+                                    </div>
+                                {% endif %}
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>

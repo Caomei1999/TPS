@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.dispatch import receiver
+from django.db.models.signals import post_save, post_delete
 from django.utils import timezone
 from parkings.models import Parking
 
@@ -39,7 +41,7 @@ class ParkingSession(models.Model):
     prepaid_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     is_expired = models.BooleanField(default=False)
     expired_at = models.DateTimeField(null=True, blank=True) 
-    grace_period_minutes = models.IntegerField(default=15)
+    grace_period_minutes = models.IntegerField(default=5)
     is_in_grace_period = models.BooleanField(default=False)
     class Meta:
         verbose_name = "Parking Session"
@@ -56,6 +58,9 @@ class ParkingSession(models.Model):
         if self.vehicle:
             return f"Session {self.id} - {self.vehicle.plate}"
         return f"Session {self.id} - [No Vehicle]"
+
+def fine_evidence_path(instance, filename):
+    return f'fines/{instance.vehicle.plate}_{timezone.now().strftime("%Y%m%d%H%M%S")}_{filename}'
 
 class Fine(models.Model):
     STATUS_CHOICES = (
@@ -76,6 +81,11 @@ class Fine(models.Model):
     issued_at = models.DateTimeField(default=timezone.now)
     paid_at = models.DateTimeField(null=True, blank=True)
 
+    notes = models.TextField(blank=True, null=True)
+    evidence_image = models.ImageField(upload_to=fine_evidence_path, blank=True, null=True)
+
+    contestation_reason = models.TextField(blank=True, null=True, help_text="Reason provided by user for disputing the fine")
+
     class Meta:
         verbose_name = "Violation / Fine"
         verbose_name_plural = "Violations / Fines"
@@ -83,3 +93,31 @@ class Fine(models.Model):
 
     def __str__(self):
         return f"Fine #{self.id} - {self.vehicle.plate}"
+    
+@receiver(post_save, sender=Fine)
+@receiver(post_delete, sender=Fine)
+def update_user_violation_count(sender, instance, **kwargs):
+    """
+    Ricalcola il violations_count dell'utente ogni volta che una multa
+    viene creata, modificata (cambio status) o eliminata.
+    """
+    if not instance.vehicle or not instance.vehicle.user:
+        return
+
+    user = instance.vehicle.user
+
+    current_count = Fine.objects.filter(
+        vehicle__user=user
+    ).exclude(
+        status__in=['paid', 'cancelled']
+    ).count()
+
+    # Aggiorna il conteggio sull'utente
+    user.violations_count = current_count
+
+    if user.violations_count >= 3:
+        user.is_active = False
+    else:
+        user.is_active = True
+
+    user.save(update_fields=['violations_count', 'is_active'])

@@ -12,8 +12,8 @@ class ActiveSessionCard extends ConsumerWidget {
   final VoidCallback onExtendSession; // NEW
   final bool isStopping;
 
-  // Grace period: 10 minuti dopo la scadenza
-  static const Duration gracePeriod = Duration(minutes: 15);
+  // Grace period: 5 minuti dopo la scadenza
+  static const Duration gracePeriod = Duration(minutes: 5);
 
   const ActiveSessionCard({
     super.key,
@@ -65,7 +65,7 @@ class ActiveSessionCard extends ConsumerWidget {
     } else if (isInGracePeriod) {
       statusColor = Colors.redAccent; // ROSSO per expired/grace period
       statusText = "EXPIRED";
-    } else if (remaining.inMinutes < 15) {
+    } else if (remaining.inMinutes < 5) {
       statusColor = Colors.orangeAccent;
       statusText = "EXPIRING SOON";
     }

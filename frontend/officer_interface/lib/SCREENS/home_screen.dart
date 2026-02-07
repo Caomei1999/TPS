@@ -4,14 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:officer_interface/MAIN%20UTILS/issue_ticket_dialog.dart';
 import 'package:officer_interface/MODELS/parking_session.dart';
 import 'package:officer_interface/services/controller_service.dart';
 
-// ✅ Shift
 import 'package:officer_interface/services/shift_service.dart';
 import 'package:officer_interface/SCREENS/start_shift_screen.dart';
 
-// ✅ Plate OCR
 import 'package:officer_interface/services/plate_ocr_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -519,7 +518,6 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 56,
             child: ElevatedButton.icon(
               onPressed: _handleReportViolation,
-              icon: const Icon(Icons.gavel, size: 28),
               label: Text(
                 "ISSUE TICKET",
                 style: GoogleFonts.poppins(
@@ -552,82 +550,60 @@ class _HomeScreenState extends State<HomeScreen> {
     final plate = _plateController.text.trim();
     if (plate.isEmpty) return;
 
-    final confirm = await showDialog<bool>(
+    // 1. Apri il Dialog e aspetta i dati (TicketData)
+    final TicketData? ticketData = await showDialog<TicketData>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color.fromARGB(255, 2, 11, 60),
-        title: const Text(
-          "Confirm Violation",
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
-          "Are you sure you want to issue a ticket to vehicle $plate?\nUser's violation count will increase.",
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("ISSUE TICKET"),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => IssueTicketDialog(
+        plate: plate,
+        sessionId: _activeSession?.id,
       ),
     );
 
-    if (confirm != true) return;
+    // Se null, l'utente ha annullato
+    if (ticketData == null) return;
 
     setState(() => _isLoading = true);
 
-    final int statusCode = await ControllerService.reportViolation(plate);
+    // 2. Chiama il servizio con tutti i dati
+    final int statusCode = await ControllerService.reportViolation(
+      plate: plate,
+      reason: ticketData.reason,
+      notes: ticketData.notes,
+      image: ticketData.image,
+    );
 
     if (!mounted) return;
 
     setState(() {
       _isLoading = false;
 
-      if (statusCode == 200) {
+      if (statusCode == 200 || statusCode == 201) {
         _plateController.clear();
         _message = null;
+        _canIssueTicket = false; 
+        _status = null;
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: const [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 10),
-                Text("Violation Reported! Count +1"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Text("Violation Reported!"),
+                ]),
+                Text("Reason: ${ticketData.reason}", style: TextStyle(fontSize: 12, color: Colors.white70)),
               ],
             ),
             backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else if (statusCode == 404) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Vehicle Not Found in Database! (Unregistered)"),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      } else if (statusCode == 403) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Permission Denied: Only officials can issue tickets.",
-            ),
-            backgroundColor: Colors.red,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Failed to report. Error Code: $statusCode"),
-            backgroundColor: Colors.red,
-          ),
+           SnackBar(content: Text("Failed. Error: $statusCode"), backgroundColor: Colors.red),
         );
       }
     });

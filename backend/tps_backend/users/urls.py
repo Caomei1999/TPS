@@ -1,6 +1,9 @@
 from django.urls import path
 from .views import (
-    ProfileView, 
+    ContestFineView,
+    PayFineView,
+    ProfileView,
+    UserFinesView, 
     register_user, 
     CustomTokenObtainPairView,
     ManagerTokenObtainPairView,
@@ -47,4 +50,7 @@ urlpatterns = [
     path('shifts/history/', ShiftHistoryView.as_view(), name='shift_history'),
     path('shifts/active-officers/', ActiveOfficersView.as_view(), name='active_officers'),
     path('violations/report/', ReportViolationView.as_view(), name='report_violation'),
+    path('me/fines/', UserFinesView.as_view(), name='user-fines'),
+    path('fines/<int:pk>/pay/', PayFineView.as_view(), name='pay-fine'),
+    path('fines/<int:pk>/contest/', ContestFineView.as_view(), name='contest-fine'),
 ]

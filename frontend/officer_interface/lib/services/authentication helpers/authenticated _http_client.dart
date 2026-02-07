@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'secure_storage_service.dart';
 
@@ -108,6 +109,59 @@ class AuthenticatedHttpClient {
           print("Refresh failed. Logging out.");
           await _storageService.deleteTokens();
           throw Exception('Session Expired');
+        }
+      }
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<http.Response> postMultipart(
+    Uri url, {
+    Map<String, String>? fields,
+    File? imageFile,
+    String imageFieldName = 'image',
+    bool isRetry = false,
+  }) async {
+    String? currentToken = await _storageService.getAccessToken();
+
+    var request = http.MultipartRequest('POST', url);
+
+    final authHeaders = await _getAuthHeaders(currentToken);
+    request.headers.addAll(authHeaders);
+
+    if (fields != null) {
+      request.fields.addAll(fields);
+    }
+    if (imageFile != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        imageFieldName,
+        imageFile.path,
+      ));
+    }
+
+    try {
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 401 && !isRetry) {
+        print("Token expired (401) during Multipart. Attempting refresh...");
+        final newAccessToken = await _refreshToken();
+
+        if (newAccessToken != null) {
+          print("Refresh success. Retrying Multipart request.");
+          return postMultipart(
+            url,
+            fields: fields,
+            imageFile: imageFile,
+            imageFieldName: imageFieldName,
+            isRetry: true,
+          );
+        } else {
+           await _storageService.deleteTokens();
+           throw Exception('Session Expired');
         }
       }
 

@@ -273,8 +273,6 @@ Future<void> _showLogoutDialog() async {
   Widget _buildUserInfoCard(BuildContext context) {
     final String email = _userData?['email'] ?? 'N/A';
     final String joined = _formatJoinDate(_userData?['date_joined']);
-    final int remaining = _userData?['remaining_chances'] ?? 3;
-    final bool isCritical = remaining <= 1;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -365,15 +363,6 @@ Future<void> _showLogoutDialog() async {
           _buildInfoRow(IconlyLight.message, 'Email', email),
           const Divider(color: Colors.white24, height: 25),
           _buildInfoRow(IconlyLight.calendar, 'Joined', joined),
-          const Divider(color: Colors.white24, height: 25),
-          _buildInfoRow(
-            isCritical
-                ? Icons.gpp_maybe_outlined
-                : Icons.verified_user_outlined,
-            'Account Standing',
-            '$remaining / 3 Chances',
-            valueColor: isCritical ? Colors.redAccent : null,
-          ),
         ],
       ),
     );

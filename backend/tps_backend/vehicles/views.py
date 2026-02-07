@@ -159,6 +159,7 @@ class ParkingSessionViewSet(viewsets.ModelViewSet):
         session.end_session() 
         serializer = self.get_serializer(session)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
     @action(detail=False, methods=['get'])
     def search_by_plate(self, request):
         plate = request.query_params.get('plate')
@@ -182,7 +183,7 @@ class ParkingSessionViewSet(viewsets.ModelViewSet):
         session_data = ParkingSessionSerializer(session).data
         
         now = timezone.now()
-        grace_minutes = getattr(session, 'grace_period_minutes', 15)
+        grace_minutes = getattr(session, 'grace_period_minutes', 5)
 
         reference_time = None
         
@@ -210,8 +211,8 @@ class ParkingSessionViewSet(viewsets.ModelViewSet):
         can_issue_ticket = False
         message = "Session is active."
 
-        if not session.planned_end_time and not session.end_time:
-            return Response({
+        if session.is_active and not session.end_time and (not session.planned_end_time or now < session.planned_end_time):
+             return Response({
                 "status": "active",
                 "can_issue_ticket": False,
                 "message": "Session is active (Ongoing).",
@@ -227,15 +228,12 @@ class ParkingSessionViewSet(viewsets.ModelViewSet):
             status_code = "grace_period"
             can_issue_ticket = False
             message = f"In Grace Period (Expires at {grace_end_time_local_str})"
-            
-
             session_data['end_time'] = reference_time
             
         else:
             status_code = "expired"
             can_issue_ticket = True
             message = "Session expired. You can issue a ticket."
-
             session_data['end_time'] = reference_time
 
         user = request.user

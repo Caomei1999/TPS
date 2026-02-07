@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:user_interface/MAIN%20UTILS/app_sizes.dart';
 import 'package:user_interface/MAIN%20UTILS/app_theme.dart';
 import 'package:user_interface/SCREENS/login/login_screen.dart';
+import 'package:user_interface/SCREENS/violations/violations_screen.dart';
 import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/secure_storage_service.dart';
 import 'package:user_interface/services/user_service.dart';
 import 'package:user_interface/main.dart';
@@ -608,6 +609,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     color: Colors.white.withOpacity(0.2),
                     thickness: 1,
                   ),
+                ),
+                const SizedBox(height: 10),
+                _buildSettingsTile(
+                  context,
+                  icon: IconlyBold.danger, // O un'icona appropriata
+                  title: 'Manage Violations',
+                  subtitle: 'Pay fines & restore standing',
+                  onTap: () {
+                    Navigator.push(
+                      context, 
+                      MaterialPageRoute(builder: (_) => const ViolationsScreen())
+                    );
+                  },
                 ),
                 const SizedBox(height: 10),
                 _buildDangerTile(

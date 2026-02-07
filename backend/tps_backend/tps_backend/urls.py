@@ -13,16 +13,12 @@ admin.site.index_title = "Dashboard Overview"
 urlpatterns = [
 
     path('admin/', admin.site.urls),
-
-
     path('api/users/', include('users.urls')), 
-
     path('api/payments/', include('payments.urls')),
-
-
     path('api/', include('parkings.urls')),
     path('api/', include('vehicles.urls')),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -133,7 +133,7 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = []
 
-
+MEDIA_URL = '/media/'
 
 
 LANGUAGE_CODE = 'en-us'
