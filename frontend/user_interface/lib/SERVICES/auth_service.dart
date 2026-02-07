@@ -10,6 +10,7 @@ class AuthService {
     required String lastName,
     required String email,
     required String password,
+    required String confirmPassword,
   }) async {
     final url = Uri.parse('$_baseUrl/register/');
 
@@ -22,6 +23,7 @@ class AuthService {
           'last_name': lastName,
           'email': email,
           'password': password,
+          'password2': confirmPassword,
         }),
       );
 
@@ -59,7 +61,7 @@ class AuthService {
           if (e.toString().startsWith("Exception:")) rethrow;
         }
 
-        throw Exception('Login failed. Please check your credentials.');
+        throw Exception('Login failed. Check your credentials.');
       }
     } catch (e) {
       rethrow;

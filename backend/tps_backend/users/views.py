@@ -32,7 +32,11 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        data = super().validate(attrs)
+        try:
+            data = super().validate(attrs)
+        except serializers.ValidationError:
+            # Generic error for authentication failure
+            raise serializers.ValidationError({"detail": "Invalid credentials."})
 
         if self.user.role == 'user' and self.user.violations_count >= 3:
             raise serializers.ValidationError(
@@ -40,8 +44,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             )
 
         if not self.user.is_active:
-             raise serializers.ValidationError({"detail": "This account is inactive."})
-             
+            raise serializers.ValidationError({"detail": "Invalid credentials."})
+            
         data['role'] = self.user.role 
         data['allowed_cities'] = self.user.allowed_cities if self.user.allowed_cities else []
         return data
@@ -56,11 +60,14 @@ class ManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
     Serializer for manager login - only allows manager role OR SUPERUSER
     """
     def validate(self, attrs):
-        data = super().validate(attrs)
-        
+        try:
+            data = super().validate(attrs)
+        except serializers.ValidationError:
+            raise serializers.ValidationError({"detail": "Invalid credentials."})
+
         if self.user.role != 'manager' and self.user.role != 'superuser':
             raise serializers.ValidationError(
-                {"detail": "Access denied. Only managers (or superusers) can access this interface."}
+                {"detail": "Invalid credentials."}
             )
         
         data['role'] = self.user.role
@@ -82,11 +89,14 @@ class ControllerTokenObtainPairSerializer(TokenObtainPairSerializer):
     Serializer for controller login - only allows controller role OR SUPERUSER
     """
     def validate(self, attrs):
-        data = super().validate(attrs)
-        
+        try:
+            data = super().validate(attrs)
+        except serializers.ValidationError:
+            raise serializers.ValidationError({"detail": "Invalid credentials."})
+
         if self.user.role != 'controller' and self.user.role != 'superuser':
             raise serializers.ValidationError(
-                {"detail": "Access denied. Only controllers (or superusers) can access this interface."}
+                {"detail": "Invalid credentials."}
             )
         
         data['role'] = self.user.role
@@ -107,17 +117,19 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
     Serializer for user login - only allows user role
     """
     def validate(self, attrs):
-        data = super().validate(attrs)
-        
-        # Check if user has user role
+        try:
+            data = super().validate(attrs)
+        except serializers.ValidationError:
+            raise serializers.ValidationError({"detail": "Invalid credentials."})
+
         if self.user.role != 'user':
             raise serializers.ValidationError(
-                {"detail": "Access denied. Only regular users can access this interface."}
+                {"detail": "Invalid credentials."}
             )
-        
+
         if self.user.violations_count >= 3:
             raise serializers.ValidationError(
-                {"detail": "Login denied. Your account is blocked due to excessive violations (3+)."}
+                {"detail": "Login denied. Account blocked due to excessive violations."}
             )
         
         data['role'] = self.user.role
@@ -129,6 +141,12 @@ class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['role'] = user.role
         return token
 
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
 
 class RegisterUserView(APIView):
     permission_classes = () 
@@ -145,7 +163,8 @@ class RegisterUserView(APIView):
                 'tokens': tokens
             }
             return Response(response_data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Generic error for registration failure
+        return Response({"detail": "Registration failed. Please check the information entered."}, status=status.HTTP_400_BAD_REQUEST)
 
 register_user = RegisterUserView.as_view()
 
@@ -201,6 +220,7 @@ class PasswordResetRequestView(APIView):
             try:
                 user = CustomUser.objects.get(email=email)
             except CustomUser.DoesNotExist:
+                # Always return generic message
                 return Response({"message": "If the email exists, a reset code has been sent."}, status=status.HTTP_200_OK)
             token = default_token_generator.make_token(user)
             try:
@@ -212,9 +232,10 @@ class PasswordResetRequestView(APIView):
                     fail_silently=False,
                 )
             except Exception as e:
+                # Generic error
                 return Response({"error": "Failed to send email."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            return Response({"message": "Password reset token sent."}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "If the email exists, a reset code has been sent."}, status=status.HTTP_200_OK)
+        return Response({"detail": "Password reset failed. Please check the information entered."}, status=status.HTTP_400_BAD_REQUEST)
 
 class PasswordResetConfirmView(APIView):
     permission_classes = () 
@@ -225,7 +246,7 @@ class PasswordResetConfirmView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": "Password reset failed. Please check the information entered."}, status=status.HTTP_400_BAD_REQUEST)
 
 from rest_framework.permissions import IsAuthenticated
 
@@ -377,7 +398,6 @@ class ActiveOfficersView(APIView):
             'active_officers': active_officers,
             'count': len(active_officers)
         }, status=status.HTTP_200_OK)
-
 
 class ReportViolationView(APIView):
     """

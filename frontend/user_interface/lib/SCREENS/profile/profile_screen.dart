@@ -152,6 +152,73 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
+Future<void> _showLogoutDialog() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          // Sfondo scuro che si adatta al tema
+          backgroundColor: const Color.fromARGB(255, 2, 11, 60),
+          elevation: 10,
+          // Bordo arrotondato con linea sottile bianca
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.white.withOpacity(0.1)),
+          ),
+          title: Text(
+            'Logout',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to log out?',
+            style: GoogleFonts.poppins(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          actions: [
+            // Tasto ANNULLA
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            // Tasto LOGOUT (Rosso)
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Chiude il dialog
+                _handleLogout(); // Esegue il logout
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.redAccent.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: Text(
+                'Logout',
+                style: GoogleFonts.poppins(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -429,7 +496,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildLogoutButton(BuildContext context) {
+Widget _buildLogoutButton(BuildContext context) {
     return TextButton.icon(
       icon: const Icon(IconlyLight.logout, color: Colors.redAccent, size: 20),
       label: Text(
@@ -448,7 +515,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           side: BorderSide(color: Colors.redAccent.withOpacity(0.8), width: 1),
         ),
       ),
-      onPressed: _handleLogout,
+      // MODIFICA QUI: Chiama il dialog invece del logout diretto
+      onPressed: _showLogoutDialog, 
     );
   }
 }
+

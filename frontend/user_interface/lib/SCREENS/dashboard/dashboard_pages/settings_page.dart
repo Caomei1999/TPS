@@ -43,31 +43,105 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _handleDeleteAccount() async {
-    Navigator.of(context).pop();
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (c) => const Center(
+      child: CircularProgressIndicator(color: Colors.redAccent),
+    ),
+  );
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (c) => const Center(
-        child: CircularProgressIndicator(color: Colors.redAccent),
+  bool success = false;
+
+  try {
+    success = await _userService.deleteAccount();
+  } catch (e) {
+    debugPrint("Error deleting account: $e");
+    success = false;
+  }
+
+  if (!mounted) return;
+
+  Navigator.of(context, rootNavigator: true).pop(); 
+
+  if (success) {
+    await _handleLogout();
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Failed to delete account. Please try again."),
+        backgroundColor: Colors.red,
       ),
     );
+  }
+}
 
-    final success = await _userService.deleteAccount();
 
-    if (!mounted) return;
-
-    Navigator.of(context).pop();
-
-    if (success) {
-      await _storageService.deleteTokens();
-      if (mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (Route<dynamic> route) => false,
+  Future<void> _showLogoutDialog() async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          // Sfondo scuro che si adatta al tema
+          backgroundColor: const Color.fromARGB(255, 2, 11, 60),
+          elevation: 10,
+          // Bordo arrotondato con linea sottile bianca
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.white.withOpacity(0.1)),
+          ),
+          title: Text(
+            'Logout',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to log out?',
+            style: GoogleFonts.poppins(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          actions: [
+            // Tasto ANNULLA
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            // Tasto LOGOUT (Rosso)
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Chiude il dialog
+                _handleLogout(); // Esegue il logout
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: Colors.redAccent.withOpacity(0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: Text(
+                'Logout',
+                style: GoogleFonts.poppins(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         );
-      }
-    }
+      },
+    );
   }
 
   void _showChangePasswordDialog() {
@@ -445,7 +519,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         suffixIcon: IconButton(
           icon: Icon(
-            showPassword ? Icons.visibility_off : Icons.visibility,
+            showPassword ? Icons.visibility : Icons.visibility_off,
             color: Colors.white54,
           ),
           onPressed: onToggleVisibility,
@@ -540,7 +614,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   context,
                   icon: IconlyBold.logout,
                   title: 'Logout',
-                  onTap: _handleLogout,
+                  onTap: _showLogoutDialog,
                 ),
                 const SizedBox(height: 10),
                 _buildDangerTile(

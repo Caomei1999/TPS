@@ -45,7 +45,13 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"password": "Passwords do not match."})
         
         try:
-            validate_password(data['password'], user=CustomUser(**data))
+            user = CustomUser(
+                first_name=data.get('first_name'),
+                last_name=data.get('last_name'),
+                email=data.get('email')
+            )
+
+            validate_password(data['password'], user=user)
         except exceptions.ValidationError as e:
             raise serializers.ValidationError({"password": list(e.messages)})
         

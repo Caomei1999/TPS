@@ -20,18 +20,32 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool isLogin = true;
   bool showPassword = false;
+  bool showConfirmPassword = false;
   bool _isLoading = false;
+  bool _isAccountBlocked = false;
 
   final _nameController = TextEditingController();
   final _surnameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   void _navigateToMain() {
     Navigator.of(context).pushReplacement(slideRoute(const RootPage()));
   }
 
   void _handleSignUp() async {
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showErrorSnackbar('Passwords do not match.');
+      return;
+    }
+
+    if (_passwordController.text.length < 8) {
+      _showErrorSnackbar('Password must be at least 8 characters long.');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -41,6 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
       lastName: _surnameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text,
+      confirmPassword: _confirmPasswordController.text,
     );
 
     setState(() {
@@ -66,6 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     setState(() {
       _isLoading = true;
+      _isAccountBlocked = false; // Resetta lo stato precedente
     });
 
     try {
@@ -73,6 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+      
       if (result != null) {
         final accessToken = result['access'];
         final refreshToken = result['refresh'];
@@ -98,7 +115,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
       String errorMessage = e.toString().replaceAll("Exception: ", "");
 
-      _showErrorSnackbar(errorMessage);
+      // MODIFICA QUI: Controlla se il messaggio riguarda il blocco account
+      if (errorMessage.toLowerCase().contains("blocked") || 
+          errorMessage.toLowerCase().contains("violations")) {
+        setState(() {
+          _isAccountBlocked = true;
+        });
+      } else {
+        // Se è un altro errore (es. password errata), mostra la snackbar
+        _showErrorSnackbar(errorMessage);
+      }
     }
   }
 
@@ -155,6 +181,51 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 40),
 
+                if (_isAccountBlocked && isLogin)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.15), // Sfondo rosso trasparente
+                        border: Border.all(color: Colors.redAccent, width: 1.5),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.block, color: Colors.redAccent, size: 30),
+                          const SizedBox(height: 10),
+                          Text(
+                            "Account Blocked",
+                            style: GoogleFonts.poppins(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            "You have exceeded violations limit.",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            "For more information contact:\nsupport@tps.com",
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontStyle: FontStyle.italic
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                 // FORM BOX
                 Container(
                   padding: const EdgeInsets.all(20),
@@ -203,6 +274,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
 
+                      if (!isLogin) ...[
+                        const SizedBox(height: 16),
+                        _buildTextField(
+                          controller: _confirmPasswordController,
+                          label: "Confirm Password",
+                          icon: Icons.lock_outline,
+                          isPassword: true,
+                          obscureText: !showConfirmPassword,
+                          onVisibilityToggle: () {
+                            setState(() => showConfirmPassword = !showConfirmPassword);
+                          },
+                        ),
+                      ],
                       if (isLogin)
                         Align(
                           alignment: Alignment.centerRight,
