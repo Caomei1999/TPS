@@ -526,7 +526,7 @@ class _ViolationsScreenState extends ConsumerState<ViolationsScreen> {
                            borderRadius: BorderRadius.circular(10),
                            border: Border.all(color: Colors.amber)
                          ),
-                         child: const Icon(Icons.gavel_outlined, color: Colors.amber, size: 20),
+                         child: const Text("CONTEST")
                        ),
                      ),
                      const SizedBox(width: 10),

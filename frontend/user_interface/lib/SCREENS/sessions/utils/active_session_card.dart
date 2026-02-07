@@ -12,8 +12,6 @@ class ActiveSessionCard extends ConsumerWidget {
   final VoidCallback onExtendSession; // NEW
   final bool isStopping;
 
-  // Grace period: 5 minuti dopo la scadenza
-  static const Duration gracePeriod = Duration(minutes: 5);
 
   const ActiveSessionCard({
     super.key,
@@ -25,6 +23,9 @@ class ActiveSessionCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 0. DEFINISCI IL GRACE PERIOD DINAMICO DAL MODELLO
+    final Duration gracePeriod = Duration(minutes: session.gracePeriodMinutes);
+
     // 1. Recupera il tempo trascorso dal timer globale
     final elapsedAsync = ref.watch(parkingElapsedProvider);
     final Duration elapsed = elapsedAsync.value ?? Duration.zero;
@@ -36,10 +37,9 @@ class ActiveSessionCard extends ConsumerWidget {
     final Duration remaining = totalDuration - elapsed;
     final bool isExpired = remaining.isNegative;
 
-    // 3. Calcolo grace period
+    // 3. Calcolo grace period (Usa la variabile gracePeriod definita sopra)
     final Duration gracePeriodRemaining = isExpired
-        ? gracePeriod +
-              remaining // remaining è negativo, quindi sommiamo
+        ? gracePeriod + remaining // remaining è negativo, quindi sommiamo
         : Duration.zero;
 
     final bool isInGracePeriod = isExpired && !gracePeriodRemaining.isNegative;

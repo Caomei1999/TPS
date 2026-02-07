@@ -193,7 +193,7 @@ STATICFILES_DIRS = [
 # Unfold Admin Configuration
 UNFOLD = {
     "SITE_TITLE": None,  # Remove title from sidebar
-    "SITE_HEADER": "TPS Management Dashboard",
+    "SITE_HEADER": "TPS Admin Panel",
     "DASHBOARD_CALLBACK": "tps_backend.dashboard.dashboard_callback",
     "SITE_URL": "/",
     "SITE_ICON": None,

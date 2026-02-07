@@ -151,7 +151,7 @@
 <div class="px-6 py-8">
     
     <div class="mb-10">
-        <h1 class="text-7xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+        <h1 style="font-size: 2.5rem;" class="font-extrabold text-gray-900 dark:text-white tracking-tight">
             Welcome back, <span class="text-neon-blue">{{ request.user.first_name|default:request.user.username }}!</span>
         </h1>
     </div>
@@ -188,9 +188,59 @@
         </div>
     </div>
 
+    
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        
         <div class="lg:col-span-2">
+            <div class="dark:bg-gray-800 rounded-lg p-6 pl-0">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">System Global Rules</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        {% if system_config.id %}
+                            <a href="/admin/vehicles/globalsettings/{{ system_config.id }}/change/" class="text-sm text-blue-500 font-semibold hover:underline">
+                                Update Rules &rarr;
+                            </a>
+                        {% else %}
+                            <a href="/admin/vehicles/globalsettings/add/" class="text-sm text-green-500 font-semibold hover:underline">
+                                Initialize Rules &rarr;
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-3 mb-6">
+                    <div class="px-4 py-2 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full text-sm font-bold">
+                        Max Violations: {{ system_config.max_violations|default:"3" }}
+                    </div>
+                    <div class="px-4 py-2 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full text-sm font-bold">
+                        Grace Period: {{ system_config.grace_period_minutes|default:"15" }} min
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="bg-gray-50 dark:bg-gray-700/30 rounded-lg px-4">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+                            Violation cases and fines
+                        </h4>
+                        <hr class="border-gray-200 dark:border-gray-600" />
+                        {% if violation_types %}
+                            {% for tariff in violation_types %}
+                            <div class="flex justify-between text-sm border-b border-gray-200 dark:border-gray-600 py-3 {% if forloop.last %}border-0{% endif %}">
+                                <span class="font-medium text-gray-700 dark:text-gray-300">
+                                    {{ tariff.name }}
+                                </span>
+                                <span class="font-bold text-gray-900 dark:text-white">
+                                    €{{ tariff.amount }}
+                                </span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-gray-400 text-xs italic py-3">
+                                No tariff configured
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
             <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Shortcuts</h3>
             
             <div class="shortcut-grid">
@@ -235,7 +285,7 @@
                 </a>
             </div>
         </div>
-
+        
         <div class="lg:col-span-1">
              <div class="flex justify-between items-center mb-6">
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white">Recent Activity</h3>

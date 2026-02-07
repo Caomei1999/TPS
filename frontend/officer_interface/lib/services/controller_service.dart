@@ -57,4 +57,24 @@ class ControllerService {
       return 500;
     }
   }
+
+  static Future<List<Map<String, dynamic>>> fetchViolationTypes() async {
+    final url = Uri.parse('$_apiRoot/users/violations/types/'); 
+    
+    try {
+      final response = await _httpClient.get(url);
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((e) => e as Map<String, dynamic>).toList();
+      }
+    } catch (e) {
+      print("Error fetching violation types: $e");
+    }
+    
+    // Fallback locale in caso di errore
+    return [
+      {"name": "Parking Violation", "amount": 50.0},
+    ];
+  }
 }

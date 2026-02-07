@@ -2,14 +2,21 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:officer_interface/services/controller_service.dart';
 
 // Classe di supporto per restituire i dati al padre
 class TicketData {
   final String reason;
   final String notes;
   final File? image;
+  final double amount; 
 
-  TicketData({required this.reason, required this.notes, this.image});
+  TicketData({
+    required this.reason, 
+    required this.notes, 
+    this.image,
+    required this.amount, 
+  });
 }
 
 class IssueTicketDialog extends StatefulWidget {
@@ -31,19 +38,35 @@ class _IssueTicketDialogState extends State<IssueTicketDialog> {
   final ImagePicker _picker = ImagePicker();
   File? _selectedImage;
 
-  // Mappa delle violazioni e dei costi
-  final Map<String, double> _violationTypes = {
-    'No Active Session': 50.00,
-    'Obstructing Parking': 85.00,
-    'Handicapped Zone Violation': 150.00,
-  };
-
-  late String _selectedReason;
+  // SOSTITUITA LA MAPPA FISSA CON LISTA DINAMICA E LOADING
+  List<Map<String, dynamic>> _violationTypes = [];
+  bool _isLoading = true;
+  
+  // Ora salviamo l'intero oggetto violazione selezionato
+  Map<String, dynamic>? _selectedViolation;
 
   @override
   void initState() {
     super.initState();
-    _selectedReason = _violationTypes.keys.first; // Default
+    _loadViolationTypes();
+  }
+
+  // NUOVO METODO PER CARICARE DATI
+  Future<void> _loadViolationTypes() async {
+    try {
+      final types = await ControllerService.fetchViolationTypes();
+      if (mounted) {
+        setState(() {
+          _violationTypes = types;
+          _isLoading = false;
+          if (types.isNotEmpty) {
+            _selectedViolation = types.first;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -60,7 +83,11 @@ class _IssueTicketDialogState extends State<IssueTicketDialog> {
 
   @override
   Widget build(BuildContext context) {
-    double currentPrice = _violationTypes[_selectedReason]!;
+    // Calcola il prezzo corrente in sicurezza
+    double currentPrice = 0.0;
+    if (_selectedViolation != null) {
+       currentPrice = double.tryParse(_selectedViolation!['amount'].toString()) ?? 0.0;
+    }
 
     return AlertDialog(
       backgroundColor: const Color.fromARGB(255, 2, 11, 60),
@@ -74,46 +101,47 @@ class _IssueTicketDialogState extends State<IssueTicketDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Dati Immutabili (senza icone, testo più grande)
             _buildReadOnlyField("License Plate", widget.plate, isBig: true),
             const SizedBox(height: 10),
             _buildReadOnlyField("Session ID", widget.sessionId != null ? "#${widget.sessionId}" : "N/A", isBig: true),
             
             const Divider(color: Colors.white24, height: 25),
 
-            // Selezione Violazione
             Text("Violation Type", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
             const SizedBox(height: 5),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _selectedReason,
-                  dropdownColor: const Color.fromARGB(255, 10, 20, 50),
-                  isExpanded: true,
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
-                  style: GoogleFonts.poppins(color: Colors.white),
-                  items: _violationTypes.keys.map((String reason) {
-                    return DropdownMenuItem<String>(
-                      value: reason,
-                      child: Text(reason),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) setState(() => _selectedReason = val);
-                  },
+            
+            // DROPDOWN DINAMICO
+            _isLoading 
+              ? const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator(color: Colors.white)))
+              : Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<Map<String, dynamic>>(
+                      value: _selectedViolation,
+                      dropdownColor: const Color.fromARGB(255, 10, 20, 50),
+                      isExpanded: true,
+                      icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
+                      style: GoogleFonts.poppins(color: Colors.white),
+                      items: _violationTypes.map((type) {
+                        return DropdownMenuItem<Map<String, dynamic>>(
+                          value: type,
+                          child: Text(type['name']),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _selectedViolation = val);
+                      },
+                    ),
+                  ),
                 ),
-              ),
-            ),
 
             const SizedBox(height: 15),
 
-            // Prezzo Dinamico
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -134,7 +162,7 @@ class _IssueTicketDialogState extends State<IssueTicketDialog> {
 
             const Divider(color: Colors.white24, height: 25),
 
-            // Foto Prove
+            // FOTO PROVE (Invariato)
             Text("Evidence Photo", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
             const SizedBox(height: 8),
             InkWell(
@@ -166,7 +194,7 @@ class _IssueTicketDialogState extends State<IssueTicketDialog> {
 
             const SizedBox(height: 15),
 
-            // Note
+            // NOTE (Invariato)
             Text("Officer Notes", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
             const SizedBox(height: 5),
             TextField(
@@ -190,12 +218,12 @@ class _IssueTicketDialogState extends State<IssueTicketDialog> {
           child: Text("Cancel", style: GoogleFonts.poppins(color: Colors.white70)),
         ),
         ElevatedButton(
-          onPressed: () {
-            // Ritorna l'oggetto completo
+          onPressed: _selectedViolation == null ? null : () {
             Navigator.pop(context, TicketData(
-              reason: _selectedReason,
+              reason: _selectedViolation!['name'],
               notes: _notesController.text.trim(),
-              image: _selectedImage
+              image: _selectedImage,
+              amount: double.tryParse(_selectedViolation!['amount'].toString()) ?? 0.0,
             ));
           },
           style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -205,7 +233,6 @@ class _IssueTicketDialogState extends State<IssueTicketDialog> {
     );
   }
 
-  // Modificato: niente icona, testo più grande se isBig=true
   Widget _buildReadOnlyField(String label, String value, {bool isBig = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

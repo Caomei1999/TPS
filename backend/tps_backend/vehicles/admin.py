@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django import forms
 from unfold.admin import ModelAdmin
-from .models import Vehicle, ParkingSession, Fine
+from .models import Vehicle, ParkingSession, Fine, GlobalSettings
 from users.models import CustomUser
 from unfold.decorators import display
 from django.contrib import messages
@@ -109,6 +109,42 @@ class FineAdmin(ModelAdmin):
         return f"€ {obj.amount}"
     amount_display.short_description = "Amount"
     
-    # Nascondi l'azione standard di delete se vuoi forzare l'uso del cambio stato
-    # def has_delete_permission(self, request, obj=None):
-    #    return False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# In vehicles/admin.py
+
+@admin.register(GlobalSettings)
+class GlobalSettingsAdmin(ModelAdmin):
+    list_display = ('__str__', 'max_violations', 'grace_period_minutes')
+    
+    fieldsets = (
+        ("System Rules", {
+            "fields": ("max_violations", "grace_period_minutes"),
+            "description": "Queste regole si applicano a tutto il sistema."
+        }),
+        ("Tariffe (Lista Dinamica)", {
+            "fields": ("violation_config",),
+            "description": "Modifica la lista delle tariffe in formato JSON. Puoi aggiungere o rimuovere oggetti a piacere."
+        }),
+    )

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Vehicle, ParkingSession
+from .models import GlobalSettings, Vehicle, ParkingSession
 from parkings.models import Parking 
 from parkings.serializers import ParkingSerializer 
 
@@ -30,8 +30,8 @@ class ParkingSessionSerializer(serializers.ModelSerializer):
         write_only=True
     )
     
-    # 🚨 CORREZIONE: RIMOSSE le definizioni esplicite con write_only=True.
-    # Ora DRF userà la definizione del modello (che permette lettura e scrittura).
+    # --- NUOVO CAMPO CALCOLATO PER IL FRONTEND ---
+    grace_period_minutes = serializers.SerializerMethodField()
 
     class Meta:
         model = ParkingSession
@@ -39,14 +39,20 @@ class ParkingSessionSerializer(serializers.ModelSerializer):
             'id', 'vehicle', 'vehicle_id', 'parking_lot', 'parking_lot_id',
             'start_time', 'end_time', 'is_active', 'total_cost',
             'planned_end_time', 'is_expired', 'expired_at', 
-            'duration_purchased_minutes', 'prepaid_cost'
+            'duration_purchased_minutes', 'prepaid_cost',
+            'grace_period_minutes' # <--- FONDAMENTALE: Aggiunto alla lista dei campi
         ]
-        # Rimuoviamo duration e prepaid_cost da read_only_fields per permettere l'invio
+        
         read_only_fields = [
             'id', 'vehicle', 'parking_lot', 'start_time', 'end_time', 
-            'is_active', 'total_cost', 'planned_end_time', 'is_expired', 'expired_at', 
-            # 'duration_purchased_minutes', 'prepaid_cost' <--- RIMOSSI DA QUI
+            'is_active', 'total_cost', 'planned_end_time', 'is_expired', 'expired_at',
+            'grace_period_minutes' # È in sola lettura (calcolato dal server)
         ]
+
+    # Metodo per recuperare il valore dinamico dalle impostazioni globali
+    def get_grace_period_minutes(self, obj):
+        config = GlobalSettings.objects.first()
+        return config.grace_period_minutes if config else 5
 
 class ControllerParkingSessionSerializer(ParkingSessionSerializer):
     """
@@ -65,6 +71,7 @@ class ControllerParkingSessionSerializer(ParkingSessionSerializer):
             'expired_at',
             'duration_purchased_minutes',
             'prepaid_cost',
+            'grace_period_minutes'
         ]
         read_only_fields = [
             'id', 'vehicle', 'parking_lot', 'start_time', 

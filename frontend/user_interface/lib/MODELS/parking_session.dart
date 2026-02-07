@@ -16,6 +16,9 @@ class ParkingSession {
   final int durationPurchasedMinutes;
   final double prepaidCost;
   final DateTime? plannedEndTime;
+  
+  // --- NUOVO CAMPO GRACE PERIOD ---
+  final int gracePeriodMinutes;
 
   ParkingSession({
     required this.id,
@@ -29,12 +32,14 @@ class ParkingSession {
     required this.durationPurchasedMinutes,
     required this.prepaidCost,
     this.plannedEndTime,
+    // Default a 15 se non passato (utile per test locali)
+    this.gracePeriodMinutes = 15, 
   });
 
   factory ParkingSession.fromJson(Map<String, dynamic> json) {
     final vehicleData = json['vehicle'];
 
-    // Helper per parsing numerico
+    // Helper per parsing numerico sicuro
     double _parseDouble(dynamic value) {
       if (value == null) return 0.0;
       if (value is num) return value.toDouble();
@@ -43,6 +48,7 @@ class ParkingSession {
 
     return ParkingSession(
       id: json['id'] as int,
+      
       vehicle: (vehicleData != null)
           ? Vehicle.fromJson(vehicleData as Map<String, dynamic>)
           : null,
@@ -58,16 +64,22 @@ class ParkingSession {
           : null,
 
       isActive: json['is_active'] ?? false,
+      
       totalCost: json['total_cost'] != null
           ? double.tryParse(json['total_cost'].toString())
           : null,
       
       // Assegnazione Nuovi Campi
       durationPurchasedMinutes: json['duration_purchased_minutes'] as int? ?? 0,
+      
       prepaidCost: _parseDouble(json['prepaid_cost']),
+      
       plannedEndTime: json['planned_end_time'] != null
           ? DateTime.parse(json['planned_end_time'] as String)
           : null,
+
+      // Lettura del Grace Period dal backend (Default 5 min)
+      gracePeriodMinutes: json['grace_period_minutes'] as int? ?? 5,
     );
   }
 

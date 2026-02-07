@@ -5,6 +5,30 @@ from django.db.models.signals import post_save, post_delete
 from django.utils import timezone
 from parkings.models import Parking
 
+
+class GlobalSettings(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    max_violations = models.IntegerField(default=3, help_text="Soglia Ban")
+    grace_period_minutes = models.IntegerField(default=15, help_text="Tolleranza")
+
+    # CAMPO DINAMICO JSON
+    # Qui salviamo la lista. Esempio: [{"name": "Divieto", "amount": 50}, ...]
+    violation_config = models.JSONField(
+        default=list, 
+        blank=True,
+        help_text='Enter the tariffs in JSON format. Example: [{"name": "No Parking", "amount": 50}, {"name": "Expired", "amount": 30}]'
+    )
+
+    class Meta:
+        verbose_name = "System Configuration"
+        verbose_name_plural = "System Configurations"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Config {self.created_at.strftime('%d/%m %H:%M')}"
+
+# --- VEHICLE MODELS ---
+
 class Vehicle(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     plate = models.CharField(max_length=15, unique=True)
@@ -27,7 +51,7 @@ class ParkingSession(models.Model):
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True,
-        related_name='sessions' # <--- FONDAMENTALE PER IL CONTEGGIO
+        related_name='sessions'
     )
     
     start_time = models.DateTimeField(default=timezone.now)
@@ -35,7 +59,7 @@ class ParkingSession(models.Model):
     is_active = models.BooleanField(default=True)
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
-    # ... (Campi prerischio: duration_purchased_minutes, planned_end_time, etc. rimangono uguali)
+    # Campi aggiuntivi
     duration_purchased_minutes = models.IntegerField(default=0)
     planned_end_time = models.DateTimeField(null=True, blank=True)
     prepaid_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -43,6 +67,7 @@ class ParkingSession(models.Model):
     expired_at = models.DateTimeField(null=True, blank=True) 
     grace_period_minutes = models.IntegerField(default=5)
     is_in_grace_period = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = "Parking Session"
         verbose_name_plural = "Parking Sessions"
@@ -58,6 +83,8 @@ class ParkingSession(models.Model):
         if self.vehicle:
             return f"Session {self.id} - {self.vehicle.plate}"
         return f"Session {self.id} - [No Vehicle]"
+
+# --- FINE / VIOLATION MODELS ---
 
 def fine_evidence_path(instance, filename):
     return f'fines/{instance.vehicle.plate}_{timezone.now().strftime("%Y%m%d%H%M%S")}_{filename}'
@@ -97,27 +124,29 @@ class Fine(models.Model):
 @receiver(post_save, sender=Fine)
 @receiver(post_delete, sender=Fine)
 def update_user_violation_count(sender, instance, **kwargs):
-    """
-    Ricalcola il violations_count dell'utente ogni volta che una multa
-    viene creata, modificata (cambio status) o eliminata.
-    """
     if not instance.vehicle or not instance.vehicle.user:
         return
-
     user = instance.vehicle.user
-
+    
+    # Conta le multe attive
     current_count = Fine.objects.filter(
         vehicle__user=user
     ).exclude(
         status__in=['paid', 'cancelled']
     ).count()
-
-    # Aggiorna il conteggio sull'utente
     user.violations_count = current_count
-
-    if user.violations_count >= 3:
-        user.is_active = False
+    
+    # --- LOGICA DINAMICA (MAX VIOLATIONS) ---
+    # 1. Recuperiamo la configurazione attiva
+    config = GlobalSettings.objects.first()
+    
+    # 2. Se esiste, usiamo il suo valore, altrimenti fallback a 3
+    limit = config.max_violations if config else 3
+    
+    # 3. Applichiamo la regola
+    if user.violations_count >= limit:
+        user.is_active = False 
     else:
-        user.is_active = True
-
+        user.is_active = True 
+        
     user.save(update_fields=['violations_count', 'is_active'])
