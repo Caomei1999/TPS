@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:officer_interface/config/api';
 import 'package:officer_interface/services/authentication%20helpers/authenticated%20_http_client.dart';
 
 class ShiftInfo {
@@ -45,7 +44,7 @@ class ShiftService {
   static final AuthenticatedHttpClient _client = AuthenticatedHttpClient();
 
   // 
-  static String get _apiRoot => Api.api;
+  static const String _apiRoot = 'https://tps-production-c025.up.railway.app/api';
 
   /// GET /api/users/shifts/current/
   static Future<ShiftInfo?> getCurrentShift() async {
@@ -80,8 +79,6 @@ class ShiftService {
     return ShiftInfo.fromJson(jsonDecode(res.body));
   }
 
-  /// POST /api/users/shifts/end/
-  /// 后端会自动结束当前 OPEN shift（不需要 body）
   static Future<void> endShift() async {
     final url = Uri.parse('$_apiRoot/users/shifts/end/');
     final res = await _client.post(url);
@@ -93,7 +90,6 @@ class ShiftService {
     }
   }
 
-  /// GET /api/users/shifts/history/?limit=10
   static Future<List<ShiftInfo>> getShiftHistory({int? limit}) async {
     final queryParams = limit != null ? '?limit=$limit' : '';
     final url = Uri.parse('$_apiRoot/users/shifts/history/$queryParams');

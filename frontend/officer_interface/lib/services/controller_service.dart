@@ -4,7 +4,7 @@ import 'package:officer_interface/services/authentication%20helpers/authenticate
 
 class ControllerService {
   static final AuthenticatedHttpClient _httpClient = AuthenticatedHttpClient();
-  static const String _apiRoot = 'http://10.0.2.2:8000/api';
+  static const String _apiRoot = 'https://tps-production-c025.up.railway.app/api';
 
   static Future<Map<String, dynamic>?> searchActiveSessionByPlate(
     String plate,

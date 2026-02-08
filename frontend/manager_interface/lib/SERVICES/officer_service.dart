@@ -50,9 +50,8 @@ class ActiveOfficer {
 class OfficerService {
   static final AuthenticatedHttpClient _client = AuthenticatedHttpClient();
 
-  /// GET /api/users/shifts/active-officers/?city={city}
   static Future<List<ActiveOfficer>> getActiveOfficers(String city) async {
-    final url = Uri.parse('http://127.0.0.1:8000/api/users/shifts/active-officers/?city=$city');
+    final url = Uri.parse('https://tps-production-c025.up.railway.app/api/users/shifts/active-officers/?city=$city');
     final response = await _client.get(url);
 
     if (response.statusCode != 200) {

@@ -4,7 +4,7 @@ import 'package:manager_interface/services/authentication%20helpers/secure_stora
 import 'package:manager_interface/SERVICES/user_session.dart';
 
 class AuthService {
-  static const String baseUrl = "http://127.0.0.1:8000/api/users";
+  static const String baseUrl = "https://tps-production-c025.up.railway.app/api/users";
   static final SecureStorageService _storageService = SecureStorageService();
 
   static Future<bool> loginManager(String email, String password) async {

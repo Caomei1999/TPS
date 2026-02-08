@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
-import 'package:officer_interface/config/api';
 import 'package:officer_interface/services/authentication%20helpers/secure_storage_service.dart';
 import 'package:officer_interface/services/user_session.dart';
 
@@ -13,12 +11,12 @@ class AuthService {
     String password, {
     String requiredRole = 'any',
   }) async {
-    //Api.token，Android: 10.0.2.2
-    final url = Uri.parse(Api.token);
+
+    final baseUrl = "https://tps-production-c025.up.railway.app/api/users";
 
     try {
       final response = await http.post(
-        url,
+        Uri.parse('$baseUrl/token/controller/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );

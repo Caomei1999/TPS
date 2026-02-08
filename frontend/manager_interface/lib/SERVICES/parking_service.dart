@@ -10,7 +10,7 @@ import 'dart:developer' as developer;
 class ParkingService {
   static final AuthenticatedHttpClient _httpClient = AuthenticatedHttpClient();
   
-  static const String _apiRoot = 'http://127.0.0.1:8000/api'; 
+  static const String _apiRoot = 'https://tps-production-c025.up.railway.app/api'; 
 
   static Future<List<City>> getCitiesWithCoordinates() async {
     developer.log('🌐 Fetching authorized cities from: $_apiRoot/cities/authorized/');
