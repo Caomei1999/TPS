@@ -42,6 +42,10 @@ ALLOWED_HOSTS = [
     'tps-parking-system.appspot.com',
     '*',
 ]
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://tps-production-c025.up.railway.app',
+]
 # Application definition
 
 INSTALLED_APPS = [
