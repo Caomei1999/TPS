@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:user_interface/MODELS/vehicle.dart';
 import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/authenticated_http_client.dart';
+import 'package:user_interface/SERVICES/CONFIG/api.dart';
 
-const String _baseUrl = 'http://10.0.2.2:8000/api/vehicles/';
+const String _baseUrl = Api.vehicles; 
 
 class VehicleService {
   final AuthenticatedHttpClient _httpClient = AuthenticatedHttpClient();
@@ -31,8 +32,6 @@ class VehicleService {
     try {
       final response = await _httpClient.post(
         url,
-        // 🚨 CORREZIONE: Passa direttamente la Map, NON json.encode(...)
-        // Il client HTTP farà la codifica una sola volta.
         body: {
           'plate': plate,
           'name': name,

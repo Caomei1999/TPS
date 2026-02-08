@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'secure_storage_service.dart';
+import 'package:user_interface/SERVICES/CONFIG/api.dart';
+import 'dart:developer' as developer;
 
-// const String _authBaseUrl = 'http://127.0.0.1:8000/api/users'; 
-const String _authBaseUrl = 'http://10.0.2.2:8000/api/users'; 
+const String _authBaseUrl = Api.users; 
 
 class AuthenticatedHttpClient {
   final SecureStorageService _storageService;
-
   AuthenticatedHttpClient() : _storageService = SecureStorageService();
 
   final Map<String, String> _baseHeaders = {
@@ -24,11 +24,8 @@ class AuthenticatedHttpClient {
   
   Future<String?> _refreshToken() async {
     final refreshToken = await _storageService.getRefreshToken();
-  
-    print('DEBUG REFRESH: Token letto dallo storage: $refreshToken'); 
-    
+
     if (refreshToken == null) {
-        print('DEBUG REFRESH: Token mancante in storage. Ritorno NULL.');
         return null;
     }
 
@@ -41,9 +38,6 @@ class AuthenticatedHttpClient {
           body: json.encode({'refresh': refreshToken}),
       );
 
-      print('DEBUG REFRESH: Server Response Status: ${response.statusCode}');
-      print('DEBUG REFRESH: Server Response Body: ${response.body}');
-
       if (response.statusCode == 200) {
           final data = json.decode(response.body);
           final newAccessToken = data['access'];
@@ -53,15 +47,12 @@ class AuthenticatedHttpClient {
               accessToken: newAccessToken, 
               refreshToken: newRefreshToken,
           );
-          print('DEBUG REFRESH: Refresh SUCCESS. New Access Token saved.');
           return newAccessToken;
-      } else {
-          print('DEBUG REFRESH: Refresh FAILED. Status ${response.statusCode}.');
       }
     } catch (e) {
-        print('DEBUG REFRESH: Network error during refresh attempt: $e');
+      developer.log("Error refreshing token");
     }
-    
+
     return null; 
 }
 
@@ -74,7 +65,6 @@ class AuthenticatedHttpClient {
       final headers = await _getAuthHeaders(currentToken);
       final bodyString = body != null ? json.encode(body) : null;
       
-      // Aggiunge l'header JSON solo se c'è un corpo (necessario per DRF)
       if (bodyString != null) {
           headers['Content-Type'] = 'application/json';
       }
@@ -84,12 +74,11 @@ class AuthenticatedHttpClient {
               return http.post(url, headers: headers, body: bodyString);
           } else if (method == 'PUT') {
               return http.put(url, headers: headers, body: bodyString);
-          } else if (method == 'PATCH') { // <--- NUOVO BLOCCO PATCH
+          } else if (method == 'PATCH') {
               return http.patch(url, headers: headers, body: bodyString); 
           } else if (method == 'DELETE') {
               return http.delete(url, headers: headers);
           }
-          // Questo è il fallback per GET, che viene usato se il metodo non corrisponde
           return http.get(url, headers: headers);
       }
       

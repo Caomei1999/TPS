@@ -1,16 +1,15 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:user_interface/MODELS/parking_session.dart';
 import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/authenticated_http_client.dart';
+import 'package:user_interface/SERVICES/CONFIG/api.dart';
 
-// URL corretto
-//const String _baseUrl = 'http://127.0.0.1:8000/api/sessions/';
-const String _baseUrl = 'http://10.0.2.2:8000/api/sessions/';
+const String _baseUrl = Api.sessions;
 
 class ParkingSessionService {
   final AuthenticatedHttpClient _httpClient = AuthenticatedHttpClient();
 
   Future<List<ParkingSession>> fetchSessions({bool? active}) async {
-    // ... (il codice fetchSessions rimane uguale a prima)
     String urlString = _baseUrl;
     if (active != null) {
       urlString += '?active=${active.toString()}';
@@ -34,7 +33,7 @@ class ParkingSessionService {
             .toList();
       }
     } catch (e) {
-      print('Errore fetchSessions: $e');
+      developer.log('Errore fetchSessions: $e');
     }
     return [];
   }
@@ -46,8 +45,7 @@ class ParkingSessionService {
     required double prepaidCost, 
   }) async {
     final url = Uri.parse(_baseUrl);
-    
-    // 🚨 FIX: Arrotondiamo il costo a 2 decimali per evitare errori 400 lato server
+
     final double roundedCost = double.parse(prepaidCost.toStringAsFixed(2));
 
     try {
@@ -57,7 +55,7 @@ class ParkingSessionService {
           'vehicle_id': vehicleId,
           'parking_lot_id': parkingLotId,
           'duration_purchased_minutes': durationMinutes,
-          'prepaid_cost': roundedCost, // Inviamo il valore arrotondato
+          'prepaid_cost': roundedCost,
         },
       );
 
@@ -66,18 +64,15 @@ class ParkingSessionService {
           json.decode(response.body) as Map<String, dynamic>,
         );
       }
-      
-      // 🚨 DEBUG: Leggi questo messaggio nella console di Flutter se fallisce ancora!
-      print('❌ ERRORE 400 DETTAGLIO: ${response.body}');
+      developer.log('Errore startSession status');
       
     } catch (e) {
-      print('Errore startSession network: $e');
+      developer.log('Errore startSession network');
     }
     return null;
   }
 
   Future<ParkingSession?> endSession(int sessionId) async {
-    // ... (codice endSession rimane uguale)
     final url = Uri.parse('$_baseUrl$sessionId/end_session/');
     try {
       final response = await _httpClient.post(url);
@@ -86,9 +81,9 @@ class ParkingSessionService {
           json.decode(response.body) as Map<String, dynamic>,
         );
       }
-      print('Errore endSession status: ${response.statusCode}\nBody: ${response.body}');
+      developer.log('Errore endSession status:');
     } catch (e) {
-      print('Errore endSession network: $e');
+      developer.log('Errore endSession network');
     }
     return null;
   }

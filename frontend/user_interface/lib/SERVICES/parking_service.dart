@@ -1,9 +1,9 @@
-// [FULL REPLACEMENT] frontend/user_interface/lib/SERVICES/parking_service.dart
-
 import 'dart:convert';
 import '../MODELS/parking.dart';
 import 'AUTHETNTICATION HELPERS/authenticated_http_client.dart';
-final String _baseUrl = 'http://10.0.2.2:8000/api/parkings/';
+import 'CONFIG/api.dart';
+
+final String _baseUrl = '${Api.baseUrl}/parkings/';
 
 class ParkingApiService {
   final AuthenticatedHttpClient _httpClient = AuthenticatedHttpClient();
@@ -31,7 +31,7 @@ class ParkingApiService {
             .toList();
       } else {
         throw Exception(
-          'Failed to load parking lots. Status: ${response.statusCode}. Body: ${response.body}',
+          'Failed to load parking lots',
         );
       }
     } catch (e) {

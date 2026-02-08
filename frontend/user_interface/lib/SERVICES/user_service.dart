@@ -1,24 +1,21 @@
 import 'dart:convert';
-import 'package:user_interface/services/AUTHETNTICATION%20HELPERS/authenticated_http_client.dart';
-import 'package:user_interface/services/AUTHETNTICATION%20HELPERS/secure_storage_service.dart';
+import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/authenticated_http_client.dart';
+import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/secure_storage_service.dart';
+import 'package:user_interface/SERVICES/CONFIG/api.dart';
 
-const String _baseUrl = 'http://10.0.2.2:8000/api/users';
-//const String _baseUrl = 'http://127.0.0.1:8000/api/users';
+const String _baseUrl = Api.users;
+
 
 class UserService {
   final AuthenticatedHttpClient _httpClient;
   final SecureStorageService _storageService;
 
-  UserService()
-    : _httpClient = AuthenticatedHttpClient(),
-      _storageService = SecureStorageService();
+  UserService() : _httpClient = AuthenticatedHttpClient(), _storageService = SecureStorageService();
 
   Future<Map<String, dynamic>?> fetchUserProfile() async {
     final url = Uri.parse('$_baseUrl/profile/');
-
     try {
       final response = await _httpClient.get(url);
-
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else if (response.statusCode == 401) {
@@ -37,7 +34,6 @@ class UserService {
     required String newPassword,
   }) async {
     final url = Uri.parse('$_baseUrl/change-password/');
-
     try {
       final response = await _httpClient.put(
         url,
@@ -52,7 +48,6 @@ class UserService {
 
   Future<bool> deleteAccount() async {
     final url = Uri.parse('$_baseUrl/delete/');
-
     try {
       final response = await _httpClient.delete(url);
 
@@ -71,13 +66,11 @@ class UserService {
     required String lastName,
   }) async {
     final url = Uri.parse('$_baseUrl/profile/');
-
     try {
       final response = await _httpClient.patch(
         url,
         body: {'first_name': firstName, 'last_name': lastName},
       );
-
       return response.statusCode == 200;
     } catch (e) {
       return false;

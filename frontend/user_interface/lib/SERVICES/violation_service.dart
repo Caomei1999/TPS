@@ -1,8 +1,11 @@
 import 'dart:convert';
-import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/authenticated_http_client.dart'; 
+import 'dart:developer' as developer;
+import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/authenticated_http_client.dart';
+import 'package:user_interface/SERVICES/CONFIG/api.dart'; 
+
 class ViolationService {
   final AuthenticatedHttpClient _httpClient = AuthenticatedHttpClient();
-  static const String _baseUrl = 'http://10.0.2.2:8000/api/users'; 
+  static const String _baseUrl = Api.users; 
 
   Future<List<dynamic>> fetchMyFines() async {
     final url = Uri.parse('$_baseUrl/me/fines/');
@@ -13,7 +16,7 @@ class ViolationService {
       }
       return [];
     } catch (e) {
-      print("Error fetching fines: $e");
+        developer.log("Error fetching fines: $e");
       return [];
     }
   }
@@ -24,7 +27,7 @@ class ViolationService {
       final response = await _httpClient.post(url);
       return response.statusCode == 200;
     } catch (e) {
-      print("Error paying fine: $e");
+        developer.log("Error paying fine: $e");
       return false;
     }
   }
@@ -38,7 +41,7 @@ class ViolationService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print("Error contesting fine: $e");
+        developer.log("Error contesting fine: $e");
       return false;
     }
   }

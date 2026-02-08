@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:user_interface/MODELS/payment_card.dart';
-import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/authenticated_http_client.dart'; 
+import 'package:user_interface/SERVICES/AUTHETNTICATION%20HELPERS/authenticated_http_client.dart';
+import 'package:user_interface/SERVICES/CONFIG/api.dart'; 
 
-// const String _baseUrl = 'http://127.0.0.1:8000/api/payments/cards/';
-const String _baseUrl = 'http://10.0.2.2:8000/api/payments/cards/';
+const String _baseUrl = Api.payments;
 
 class PaymentService {
   final AuthenticatedHttpClient _httpClient = AuthenticatedHttpClient();
@@ -20,7 +20,7 @@ class PaymentService {
       } else if (response.statusCode == 404 || response.statusCode == 204) {
         return []; 
       } else {
-        throw Exception('Failed to load payment cards: ${response.statusCode}');
+        throw Exception('Failed to load payment cards');
       }
     } catch (e) {
       return []; 
@@ -41,7 +41,7 @@ class PaymentService {
     if (response.statusCode == 201) {
       return PaymentCard.fromJson(json.decode(response.body));
     } else {
-      throw Exception('Failed to add card: ${response.body}');
+      throw Exception('Failed to add card');
     }
   }
 
@@ -50,7 +50,7 @@ class PaymentService {
     final http.Response response = await _httpClient.delete(uri);
 
     if (response.statusCode != 204) {
-      throw Exception('Failed to delete card: ${response.body}');
+      throw Exception('Failed to delete card');
     }
   }
 }
