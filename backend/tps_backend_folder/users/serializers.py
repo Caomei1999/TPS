@@ -3,6 +3,68 @@ from .models import CustomUser,Shift
 from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions
 from django.contrib.auth.tokens import default_token_generator
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework import serializers
+from vehicles.models import GlobalSettings 
+
+
+class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        if self.user.role != 'user' and not self.user.is_superuser:
+            raise serializers.ValidationError({"detail": "Accesso negato. Questa app è solo per clienti."})
+        if self.user.role == 'user':
+            config = GlobalSettings.objects.first()
+            limit = config.max_violations if config else 3
+            if self.user.violations_count >= limit:
+                raise serializers.ValidationError(
+                    {"detail": f"Account bloccato per troppe violazioni ({self.user.violations_count}/{limit})."}
+                )
+        if not self.user.is_active:
+             raise serializers.ValidationError({"detail": "Account disabilitato."})
+        data['role'] = self.user.role
+        return data
+
+class ControllerTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        allowed_roles = ['controller', 'manager']
+        if self.user.role not in allowed_roles and not self.user.is_superuser:
+            raise serializers.ValidationError({"detail": "Accesso negato. Non hai i permessi di controllo."})
+        data['role'] = self.user.role
+        return data
+    
+class ManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
+
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['role'] = user.role
+        return token
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        if self.user.role != 'manager' and not self.user.is_superuser:
+            raise serializers.ValidationError({"detail": "Accesso negato. Area riservata ai Manager."})
+        
+        data['role'] = self.user.role
+        return data
+
+
 
 class UserSerializer(serializers.ModelSerializer):
     remaining_chances = serializers.SerializerMethodField()

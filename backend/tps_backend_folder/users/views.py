@@ -15,24 +15,29 @@ from .serializers import (
     PasswordResetRequestSerializer, 
     PasswordResetConfirmSerializer
 )
+
+from .serializers import (
+    UserTokenObtainPairSerializer,
+    ControllerTokenObtainPairSerializer,
+    ManagerTokenObtainPairSerializer
+)
+
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Shift
 from .serializers import ShiftSerializer
 from django.utils import timezone
-# IMPORTA GlobalSettings QUI
 from vehicles.models import Vehicle, Fine, GlobalSettings, ParkingSession
 from rest_framework.parsers import MultiPartParser, FormParser
 from datetime import timedelta
 
-# --- SERIALIZERS PER IL LOGIN ---
-
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+# --- SERIALIZERS LOGIN ---
+class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['role'] = user.role 
+        token['role'] = user.role
         token['allowed_cities'] = user.allowed_cities if user.allowed_cities else []
         return token
 
@@ -42,96 +47,72 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         except serializers.ValidationError:
             raise serializers.ValidationError({"detail": "Invalid credentials."})
 
-        # --- LOGICA DINAMICA ---
-        config = GlobalSettings.objects.first()
-        limit = config.max_violations if config else 3
+        if self.user.role != 'user' and not self.user.is_superuser:
+            raise serializers.ValidationError({"detail": "Access denied."})
 
-        if self.user.role == 'user' and self.user.violations_count >= limit:
-            raise serializers.ValidationError(
-                {"detail": f"Login denied. Your account is blocked due to excessive violations ({self.user.violations_count}/{limit})."}
-            )
+        if self.user.role == 'user':
+            config = GlobalSettings.objects.first()
+            limit = config.max_violations if config else 3
+            if self.user.violations_count >= limit:
+                raise serializers.ValidationError(
+                    {"detail": f"Account blocked due to too many violations ({self.user.violations_count}/{limit})."}
+                )
 
         if not self.user.is_active:
-            raise serializers.ValidationError({"detail": "Invalid credentials."})
-            
-        data['role'] = self.user.role 
-        data['allowed_cities'] = self.user.allowed_cities if self.user.allowed_cities else []
-        return data
+             raise serializers.ValidationError({"detail": "Account disabled."})
 
-class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
-    
-class ManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
-    def validate(self, attrs):
-        try:
-            data = super().validate(attrs)
-        except serializers.ValidationError:
-            raise serializers.ValidationError({"detail": "Invalid credentials."})
-
-        if self.user.role != 'manager' and self.user.role != 'superuser':
-            raise serializers.ValidationError({"detail": "Invalid credentials."})
-        
         data['role'] = self.user.role
         return data
 
+class UserTokenObtainPairView(TokenObtainPairView):
+    serializer_class = UserTokenObtainPairSerializer
+
+class ControllerTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
         token['role'] = user.role
         return token
 
-class ManagerTokenObtainPairView(TokenObtainPairView):
-    serializer_class = ManagerTokenObtainPairSerializer
-
-class ControllerTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         try:
             data = super().validate(attrs)
         except serializers.ValidationError:
-            raise serializers.ValidationError({"detail": "Invalid credentials."})
+            raise serializers.ValidationError({"detail": "Access denied."})
 
-        if self.user.role != 'controller' and self.user.role != 'superuser':
-            raise serializers.ValidationError({"detail": "Invalid credentials."})
+        allowed_roles = ['controller', 'manager']
+        
+        if self.user.role not in allowed_roles and not self.user.is_superuser:
+            raise serializers.ValidationError({"detail": "Access denied."})
         
         data['role'] = self.user.role
         return data
 
 class ControllerTokenObtainPairView(TokenObtainPairView):
     serializer_class = ControllerTokenObtainPairSerializer
+
+class ManagerTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
         token['role'] = user.role
         return token
 
-class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         try:
             data = super().validate(attrs)
         except serializers.ValidationError:
-            raise serializers.ValidationError({"detail": "Invalid credentials."})
+            raise serializers.ValidationError({"detail": "Access denied."})
 
-        if self.user.role != 'user':
-            raise serializers.ValidationError({"detail": "Invalid credentials."})
-
-        # --- LOGICA DINAMICA ---
-        config = GlobalSettings.objects.first()
-        limit = config.max_violations if config else 3
-
-        if self.user.violations_count >= limit:
-            raise serializers.ValidationError(
-                {"detail": f"Login denied. Account blocked due to excessive violations ({self.user.violations_count}/{limit})."}
-            )
+        if self.user.role != 'manager' and not self.user.is_superuser:
+            raise serializers.ValidationError({"detail": "Access denied."})
         
         data['role'] = self.user.role
         return data
 
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token['role'] = user.role
-        return token
-
+class ManagerTokenObtainPairView(TokenObtainPairView):
+    serializer_class = ManagerTokenObtainPairSerializer
+    
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     return {
@@ -363,20 +344,15 @@ class ReportViolationView(APIView):
         if not plate or not reason:
             return Response({"detail": "Plate and reason are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. Recupera Configurazione Dinamica
         config = GlobalSettings.objects.first()
         
-        # Mappa dei prezzi dal JSON nel DB
         if config and config.violation_config:
-            # Converte la lista JSON [{"name": "X", "amount": 50}, ...] in un dizionario {"X": 50.0}
             violation_prices = {item['name']: float(item['amount']) for item in config.violation_config}
             max_violations = config.max_violations
         else:
-            # Fallback (sicurezza se il DB è vuoto)
             violation_prices = {'Parking Violation': 50.00}
             max_violations = 3
 
-        # Validazione della ragione basata sulle tariffe attive
         if reason not in violation_prices:
             valid_reasons = list(violation_prices.keys())
             return Response({
@@ -389,7 +365,6 @@ class ReportViolationView(APIView):
             vehicle = Vehicle.objects.get(plate__iexact=plate)
             user = vehicle.user
 
-            # 2. Logica blocco account (usa max_violations dinamico)
             user.violations_count += 1
             if user.violations_count >= max_violations:
                 user.is_active = False 
@@ -447,13 +422,11 @@ class PayFineView(APIView):
 
         fine.status = 'paid'
         fine.paid_at = timezone.now()
-        fine.save() # Questo triggera il signal che ricalcola il count nel DB
+        fine.save()
 
-        # Aggiornamento manuale del token utente (opzionale, ma utile per risposta immediata)
         if user.violations_count > 0:
             user.violations_count -= 1
             
-            # Recupera limite dinamico per lo sblocco
             config = GlobalSettings.objects.first()
             limit = config.max_violations if config else 3
 
@@ -488,12 +461,9 @@ class ContestFineView(APIView):
         return Response({"message": "Fine contested successfully. Status is now pending review."}, status=status.HTTP_200_OK)
 
 # --- NUOVA VISTA: CHECK PLATE & GRACE PERIOD ---
-# Usa questa vista nell'app del controllore quando scansiona una targa
+# Use this view in the controller app when scanning a plate
 
 class CheckPlateView(APIView):
-    """
-    Controlla se una targa ha una sessione attiva o se è nel periodo di tolleranza (Grace Period).
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, plate):
@@ -503,26 +473,22 @@ class CheckPlateView(APIView):
         try:
             vehicle = Vehicle.objects.get(plate__iexact=plate)
         except Vehicle.DoesNotExist:
-            return Response({"status": "NO_VEHICLE", "message": "Veicolo non trovato nel sistema."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"status": "NO_VEHICLE", "message": "Vehicle not found in the system."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Cerca l'ultima sessione (anche se scaduta)
         last_session = ParkingSession.objects.filter(vehicle=vehicle).order_by('-end_time').first()
 
         if not last_session:
-            return Response({"status": "NO_SESSION", "message": "Nessuna sessione trovata."}, status=status.HTTP_200_OK)
+            return Response({"status": "NO_SESSION", "message": "No session found."}, status=status.HTTP_200_OK)
 
         now = timezone.now()
 
-        # 1. Sessione ancora attiva
         if last_session.is_active and last_session.end_time and last_session.end_time > now:
             return Response({
                 "status": "VALID",
-                "message": "Parcheggio Valido",
+                "message": "Valid parking",
                 "expires_at": last_session.end_time
             }, status=status.HTTP_200_OK)
 
-        # 2. Sessione scaduta -> Controllo Grace Period
-        # Recupera il grace period dalle impostazioni (o default 15 min)
         config = GlobalSettings.objects.first()
         grace_minutes = config.grace_period_minutes if config else 15
         
@@ -533,15 +499,14 @@ class CheckPlateView(APIView):
             minutes_left = int((grace_end_time - now).total_seconds() / 60)
             return Response({
                 "status": "GRACE_PERIOD",
-                "message": f"Tolleranza attiva ({minutes_left} min rimanenti)",
+                "message": f"Grace period active ({minutes_left} min remaining)",
                 "expires_at": last_session.end_time,
                 "grace_ends_at": grace_end_time
             }, status=status.HTTP_200_OK)
 
-        # 3. Scaduto e fuori tolleranza
         return Response({
             "status": "EXPIRED",
-            "message": "Ticket Scaduto",
+            "message": "Ticket expired",
             "expired_at": last_session.end_time
         }, status=status.HTTP_200_OK)
     
@@ -550,19 +515,16 @@ class CheckPlateView(APIView):
 class ViolationTypesView(APIView):
     """
     GET /api/violations/types/
-    Restituisce la lista dinamica dei tipi di violazione configurati nel backend.
+    Returns the dynamic list of violation types configured in the backend.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         config = GlobalSettings.objects.first()
         
-        # Fallback di sicurezza se la config è vuota
         if not config or not config.violation_config:
-            # Ritorna una lista di default se non c'è nulla nel DB
             return Response([
                 {"name": "Parking Violation", "amount": 50.0},
             ], status=status.HTTP_200_OK)
         
-        # Restituisce direttamente il JSON salvato nel DB
         return Response(config.violation_config, status=status.HTTP_200_OK)

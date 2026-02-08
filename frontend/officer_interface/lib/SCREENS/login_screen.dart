@@ -27,8 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showErrorSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: Colors.red,
       ),
     );
   }
@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } else {
-      _showErrorSnackbar("Invalid credentials or Permission denied (Not a Controller).");
+      _showErrorSnackbar("Login Failed. Check your credentials.");
     }
   }
 

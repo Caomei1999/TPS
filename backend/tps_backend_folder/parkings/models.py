@@ -31,19 +31,12 @@ class City(models.Model):
 
 class Parking(models.Model):
     name = models.CharField(max_length=100)
-    city = models.CharField(max_length=50)  # Keep as CharField for backward compatibility
+    city = models.CharField(max_length=50)  
     address = models.CharField(max_length=150)
-    
     rate_per_hour = models.DecimalField(max_digits=6, decimal_places=2, default=2.5) 
-
     tariff_config_json = models.TextField(default=DEFAULT_TARIFF_JSON) 
-
-    # Remove single coordinates
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
-    
-    # Add polygon coordinates as JSON
-    # Format: [{"lat": 41.123, "lng": 12.456}, {"lat": 41.124, "lng": 12.457}, ...]
     polygon_coordinates = models.TextField(
         default='[]',
         help_text='JSON array of coordinates forming the parking polygon'

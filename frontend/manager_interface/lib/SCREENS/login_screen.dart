@@ -22,7 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: Colors.red,
       ),
     );
   }
@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
       slideRoute(HomeScreen()), 
     );
     } else {
-      _showErrorSnackbar("Invalid credentials or Permission denied.");
+      _showErrorSnackbar("Login failed. Check your credentials");
     }
   }
 

@@ -41,7 +41,7 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final url = Uri.parse('$_baseUrl/token/');
+    final url = Uri.parse('$_baseUrl/token/user/');
 
     try {
       final response = await http.post(

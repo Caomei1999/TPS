@@ -8,6 +8,7 @@ from parkings.models import City
 from .models import Shift
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
+
 def get_dynamic_city_choices():
     """Get cities from the City model"""
     cities = set()
@@ -103,7 +104,7 @@ class CustomUserCreationForm(forms.ModelForm):
             user.save()
         return user
 
-@admin.action(description="🔄 Reset Account Standing (0 Violations & Unban)")
+@admin.action(description="Reset Account Standing (0 Violations & Unban)")
 def reset_user_standing(modeladmin, request, queryset):
     updated_count = queryset.update(violations_count=0, is_active=True)
     

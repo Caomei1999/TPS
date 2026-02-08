@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-0ipfdb^onls00@#b_lu-b%zyvlhv)3aj)1*m@fko^=#iwm7uk^")
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = [
     '127.0.0.1', 
@@ -56,7 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
+    'tps_backend.middleware.SuperUserOnlyMiddleware',
 ]
 
 ROOT_URLCONF = 'tps_backend.urls'
@@ -158,6 +158,10 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+
+LOGIN_REDIRECT_URL = '/admin/'
+
+LOGOUT_REDIRECT_URL = '/admin/login/'
 
 UNFOLD = {
     "SITE_TITLE": None,  
