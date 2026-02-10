@@ -3,8 +3,8 @@ import time
 import statistics
 
 # --- CONFIG ---
-# BASE_URL = "https://tps-production-c025.up.railway.app"
-BASE_URL = "http://localhost:8000"
+BASE_URL = "https://tps-production-c025.up.railway.app"
+# BASE_URL = "http://localhost:8000"
 LOGIN_ENDPOINT = "/api/users/token/user/"
 BENCH_ENDPOINT = "/api/parkings/"
 USERNAME = "admin@admin.com"
