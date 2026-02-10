@@ -78,18 +78,6 @@ class ParkingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final availableSpots = parking.availableSpots; // Usa la proprietà derivata del modello
-
-    // 🚨 LOGICA AGGIORNATA PER LA TARIFFA
-    // Usa il getter intelligente 'tariffConfig' del modello Parking
-    final config = parking.tariffConfig;
-    
-    final isFixedDaily = config.type == 'FIXED_DAILY';
-    final rateUnit = isFixedDaily ? '/day' : '/h';
-    
-    // Usa il getter 'displayRate' che abbiamo aggiunto al modello
-    final rateDisplay = parking.displayRate.toStringAsFixed(2);
-
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -115,7 +103,6 @@ class ParkingCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // Tasto Delete ...
                   TextButton(
                       onPressed: () async {
                           final confirm = await _showConfirmDeleteDialog(context, allParkings);
@@ -129,11 +116,10 @@ class ParkingCard extends StatelessWidget {
               Text('${parking.city} - ${parking.address}', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w400)),
               const SizedBox(height: 12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Available: $availableSpots / ${parking.totalSpots}', style: GoogleFonts.poppins(color: Colors.white, fontSize: 14)),
-                  // 🚨 DISPLAY AGGIORNATO
-                  Text('Rate: €$rateDisplay$rateUnit', style: GoogleFonts.poppins(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.bold)),
+                  Text('See Details', style: GoogleFonts.poppins(color: Colors.blueAccent, fontSize: 14)),
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_forward, color: Colors.blueAccent, size: 16),
                 ],
               ),
             ],

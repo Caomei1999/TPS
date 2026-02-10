@@ -154,133 +154,122 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // --- Data Loading ---
   Future<void> _initDashboard() async {
-    setState(() => isLoading = true);
-    try {
-      debugPrint("🔍 Loading cities...");
-      
-      // Load cities with coordinates (includes all cities in DB)
-      final citiesWithCoords = await ParkingService.getCitiesWithCoordinates();
-      debugPrint("✅ Cities with coordinates loaded: ${citiesWithCoords.length}");
-      
-      // Extract city names for the list
-      final cityNames = citiesWithCoords.map((c) => c.name).toList();
-      cityNames.sort();
-      debugPrint("✅ City names: $cityNames");
-
-      setState(() {
-        cities = cityNames;
-        filteredCities = cityNames;
-        citiesWithCoordinates = citiesWithCoords;
-        isLoading = false;
-      });
-      
-      debugPrint("✅ Dashboard initialized successfully");
-    } catch (e, stackTrace) {
-      debugPrint("❌ Error loading dashboard: $e");
-      debugPrint("Stack trace: $stackTrace");
-      setState(() => isLoading = false);
-      
-      // Show error to user
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading cities: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
+  setState(() => isLoading = true);
+  try {
+    final citiesWithCoords = await ParkingService.getCitiesWithCoordinates();
+    
+    // LOG DI DEBUG: Ispezioniamo il primo elemento della lista
+    if (citiesWithCoords.isNotEmpty) {
+      final first = citiesWithCoords.first;
+      debugPrint("🔍 DEBUG CITY DATA: Name: ${first.name}, Lat: ${first.latitude}, Lng: ${first.longitude}");
+    } else {
+      debugPrint("⚠️ La lista città è vuota!");
     }
+
+    final cityNames = citiesWithCoords.map((c) => c.name).toList();
+    cityNames.sort();
+
+    setState(() {
+      cities = cityNames;
+      filteredCities = cityNames;
+      citiesWithCoordinates = citiesWithCoords;
+      isLoading = false;
+    });
+  } catch (e) {
+    debugPrint("❌ Error loading dashboard: $e");
+    setState(() => isLoading = false);
   }
+}
 
   // --- Logic Handlers ---
 
   Future<void> _onCitySelected(String city, {bool reload = false}) async {
-    if (!reload) {
-      setState(() {
-        selectedCity = city;
-        isParkingsLoading = true;
-      });
-    }
-
-    try {
-      final parkings = await ParkingService.getParkingsForMap(city);
-
-      final newMarkers = <Marker>{};
-      final newPolygons = <Polygon>{};
-
-      for (var p in parkings) {
-        LatLng? markerPosition;
-        if (p.markerLatitude != null && p.markerLongitude != null) {
-          markerPosition = LatLng(p.markerLatitude!, p.markerLongitude!);
-        } else if (p.latitude != null && p.longitude != null) {
-          markerPosition = LatLng(p.latitude!, p.longitude!);
-        }
-
-        if (markerPosition != null) {
-          newMarkers.add(
-            Marker(
-              markerId: MarkerId('p_${p.id}'),
-              position: markerPosition,
-              infoWindow: InfoWindow(
-                title: p.name,
-                snippet: p.address,
-              ),
-              onTap: () => _navigateToDetail(p),
-              icon: _parkingIcon ?? BitmapDescriptor.defaultMarker,
-            ),
-          );
-        }
-
-        // Add polygon ONLY if it has 3+ points
-        if (p.polygonCoords.length >= 3) {
-          newPolygons.add(
-            Polygon(
-              polygonId: PolygonId('poly_${p.id}'),
-              points: p.polygonCoords
-                  .map((c) => LatLng(c.lat, c.lng))
-                  .toList(),
-              strokeColor: Colors.indigo,
-              strokeWidth: 3,
-              fillColor: Colors.indigoAccent.withOpacity(0.3),
-              consumeTapEvents: true,
-              onTap: () => _navigateToDetail(p),
-            ),
-          );
-        }
-      }
-
-      setState(() {
-        selectedCityParkings = parkings;
-        filteredCityParkings = parkings;
-        _markers = newMarkers;
-        _polygons = newPolygons;
-        isParkingsLoading = false;
-      });
-
-      // Center map on first parking (with fallback to center coordinates)
-      if (parkings.isNotEmpty) {
-        LatLng? cameraTarget;
-        
-        if (parkings.first.markerLatitude != null && parkings.first.markerLongitude != null) {
-          cameraTarget = LatLng(parkings.first.markerLatitude!, parkings.first.markerLongitude!);
-        } else if (parkings.first.latitude != null && parkings.first.longitude != null) {
-          cameraTarget = LatLng(parkings.first.latitude!, parkings.first.longitude!);
-        }
-
-        if (cameraTarget != null) {
-          _mapController?.animateCamera(
-            CameraUpdate.newLatLngZoom(cameraTarget, 12),
-          );
-        }
-      }
-    } catch (e) {
-      setState(() => isParkingsLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error loading parkings: $e")));
-    }
+  if (!reload) {
+    setState(() {
+      selectedCity = city;
+      isParkingsLoading = true;
+    });
   }
+
+  try {
+    // 1. Cerchiamo la città nei dati caricati all'avvio
+    final cityData = citiesWithCoordinates.firstWhere(
+      (c) => c.name.trim().toLowerCase() == city.trim().toLowerCase(),
+      orElse: () => City(name: city),
+    );
+
+    // 2. Carichiamo i parcheggi della città
+    final parkings = await ParkingService.getParkingsForMap(city);
+
+    // 3. Logica di centraggio Mappa
+    LatLng? cameraTarget;
+
+    if (cityData.latitude != null && cityData.longitude != null) {
+      // Priorità 1: Coordinate ufficiali della città dal database
+      cameraTarget = LatLng(cityData.latitude!, cityData.longitude!);
+    } else if (parkings.isNotEmpty) {
+      // Priorità 2: Fallback sul primo parcheggio se la città non ha centro definito
+      final p = parkings.first;
+      cameraTarget = LatLng(
+        p.markerLatitude ?? p.latitude ?? 41.8719,
+        p.markerLongitude ?? p.longitude ?? 12.5674,
+      );
+    }
+
+    if (cameraTarget != null && _mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(cameraTarget, 12.5),
+      );
+    }
+
+    // 4. Creazione Marker e Poligoni
+    final newMarkers = <Marker>{};
+    final newPolygons = <Polygon>{};
+
+    for (var p in parkings) {
+      LatLng? pos;
+      if (p.markerLatitude != null && p.markerLongitude != null) {
+        pos = LatLng(p.markerLatitude!, p.markerLongitude!);
+      } else if (p.latitude != null && p.longitude != null) {
+        pos = LatLng(p.latitude!, p.longitude!);
+      }
+
+      if (pos != null) {
+        newMarkers.add(Marker(
+          markerId: MarkerId('p_${p.id}'),
+          position: pos,
+          infoWindow: InfoWindow(title: p.name, snippet: p.address),
+          onTap: () => _navigateToDetail(p),
+          icon: _parkingIcon ?? BitmapDescriptor.defaultMarker,
+        ));
+      }
+
+      if (p.polygonCoords.length >= 3) {
+        newPolygons.add(Polygon(
+          polygonId: PolygonId('poly_${p.id}'),
+          points: p.polygonCoords.map((c) => LatLng(c.lat, c.lng)).toList(),
+          strokeColor: Colors.indigo,
+          strokeWidth: 3,
+          fillColor: Colors.indigoAccent.withOpacity(0.3),
+          consumeTapEvents: true,
+          onTap: () => _navigateToDetail(p),
+        ));
+      }
+    }
+
+    setState(() {
+      selectedCityParkings = parkings;
+      filteredCityParkings = parkings;
+      _markers = newMarkers;
+      _polygons = newPolygons;
+      isParkingsLoading = false;
+    });
+
+  } catch (e) {
+    debugPrint("❌ Errore in _onCitySelected: $e");
+    setState(() => isParkingsLoading = false);
+  }
+}
 
   void _navigateToDetail(Parking parking) async {
     // Corrected navigation to the Detail Screen

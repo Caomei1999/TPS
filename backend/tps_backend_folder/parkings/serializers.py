@@ -3,9 +3,13 @@ from rest_framework import serializers
 from .models import Parking, Spot, ParkingEntrance, City
 
 class CitySerializer(serializers.ModelSerializer):
+    # Mappiamo i campi del model ai nomi attesi dal frontend
+    latitude = serializers.FloatField(source='center_latitude')
+    longitude = serializers.FloatField(source='center_longitude')
+
     class Meta:
         model = City
-        fields = ['id', 'name', 'center_latitude', 'center_longitude', 'created_at']
+        fields = ['id', 'name', 'latitude', 'longitude', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 
