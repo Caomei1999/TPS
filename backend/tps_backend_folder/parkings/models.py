@@ -42,6 +42,12 @@ class Parking(models.Model):
         help_text='JSON array of coordinates forming the parking polygon'
     )
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['city']),      
+            models.Index(fields=['name']),     
+        ]
+
     def __str__(self):
         return f"{self.name} ({self.city})"
 
@@ -70,26 +76,25 @@ class Parking(models.Model):
 
     def get_marker_position(self):
         """
-        Returns the marker position for the map.
-        Priority: entrance > center (lat/lng) > polygon centroid
+        Returns the marker position using cached entrances to avoid N+1 queries.
         """
-        # 1. If entrance exists, use it
-        entrance = self.entrances.first()
-        if entrance and entrance.latitude and entrance.longitude:
-            return (entrance.latitude, entrance.longitude)
+
+        entrances = list(self.entrances.all()) 
         
-        # 2. If center coordinates exist, use them
+        if entrances:
+            entrance = entrances[0] 
+            if entrance.latitude and entrance.longitude:
+                return (entrance.latitude, entrance.longitude)
+
         if self.latitude is not None and self.longitude is not None:
             return (self.latitude, self.longitude)
-        
-        # 3. Fall back to polygon centroid
+
         coords = self.get_polygon_coords()
         if len(coords) >= 3:
             sum_lat = sum(c['lat'] for c in coords)
             sum_lng = sum(c['lng'] for c in coords)
             return (sum_lat / len(coords), sum_lng / len(coords))
         
-        # 4. No position available
         return (None, None)
 
     @property

@@ -82,7 +82,6 @@ class ParkingSerializer(serializers.ModelSerializer):
         
         return super().update(instance, validated_data)
 
-
 class SpotSerializer(serializers.ModelSerializer):
     class Meta:
         model = Spot

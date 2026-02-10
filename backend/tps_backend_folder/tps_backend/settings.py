@@ -194,9 +194,9 @@ UNFOLD = {
                         "link": lambda request: "/admin/users/customuser/?role__exact=controller",
                     },
                     {
-                        "title": "All Users",
+                        "title": "Customers",
                         "icon": "group",
-                        "link": lambda request: "/admin/users/customuser/",
+                        "link": lambda request: "/admin/users/customuser/?role__exact=user",
                     },
                     {
                         "title": "Vehicles",

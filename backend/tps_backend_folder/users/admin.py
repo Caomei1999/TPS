@@ -119,7 +119,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     form = CustomUserChangeForm
     add_form = CustomUserCreationForm
 
-    list_display = ('email', 'role_badge', 'get_cities_display', 'violations_count', 'is_active', 'is_staff')
+    list_display = ('email', 'role_badge', 'is_active', 'is_staff')
     list_filter = ('role', 'is_active', 'is_staff', 'violations_count')
     search_fields = ('email', 'first_name', 'last_name')
     ordering = ('email',)

@@ -46,6 +46,7 @@ class ParkingAdmin(ModelAdmin):
         'total_spots', 'available_spots', 
         'rate_per_hour',
     )
+    list_filter = ('city',)
     search_fields = ('name', 'city', 'address')
     fields = (
         'name', 'city', 'address', 'rate_per_hour', 
