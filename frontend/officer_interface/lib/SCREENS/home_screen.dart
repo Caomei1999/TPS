@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
+        source: ImageSource.camera,
         imageQuality: 85,
       );
 
@@ -470,7 +470,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
             _buildInfoRow(
-              "Expired At",
+              "Session Expired At",
               DateFormat('HH:mm').format(_activeSession!.endTime.toLocal()),
             ),
             _buildInfoRow("Plate", _activeSession!.vehiclePlate),

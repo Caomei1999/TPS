@@ -298,13 +298,14 @@ class _StartShiftScreenState extends State<StartShiftScreen> {
         physics: const ClampingScrollPhysics(),
         itemCount: _shiftHistory.length,
         itemBuilder: (context, index) {
-          return _buildShiftCard(_shiftHistory[index]);
+          final cardinalIndex = _shiftHistory.length - index;
+          return _buildShiftCard(_shiftHistory[index], cardinalIndex);
         },
       ),
     );
   }
 
-  Widget _buildShiftCard(ShiftInfo shift) {
+  Widget _buildShiftCard(ShiftInfo shift, int displayId) {
     final isOpen = shift.status == 'OPEN';
     
     return Container(
@@ -336,7 +337,7 @@ class _StartShiftScreenState extends State<StartShiftScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Shift #${shift.id}",
+                  "Shift #$displayId",
                   style: GoogleFonts.poppins(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,

@@ -1,5 +1,3 @@
-// user_interface/MODELS/parking.dart
-
 import 'dart:convert';
 import 'tariff_config.dart';
 
@@ -9,24 +7,17 @@ class Parking {
   final String city;
   final String address;
   final double ratePerHour;
-  
   final double? markerLatitude;
   final double? markerLongitude;
-  
   final List<ParkingCoordinate> polygonCoords;
   final List<ParkingEntrance> entrances;
-  
   final double? latitude;
   final double? longitude;
-
   final int totalSpots;
   final int occupiedSpots;
   final int todayEntries;
   final double todayRevenue;
-  
   final String tariffConfigJson;
-
-  // Added flag to check if details are loaded
   final bool isDetailsLoaded; 
 
   Parking({
@@ -46,7 +37,7 @@ class Parking {
     required this.todayEntries,
     required this.todayRevenue,
     String? tariffConfigJson,
-    this.isDetailsLoaded = true, // Default true for legacy compatibility
+    this.isDetailsLoaded = true, 
   }) : tariffConfigJson = tariffConfigJson ?? defaultTariffConfig.toJson();
 
   static TariffConfig get defaultTariffConfig => TariffConfig(
@@ -77,16 +68,12 @@ class Parking {
   }
 
   factory Parking.fromJson(Map<String, dynamic> json) {
-    // Check if this is a "Lite" response (missing heavyweight fields)
     final bool isLite = json['total_spots'] == null;
-
     return Parking(
       id: json['id'],
       name: json['name'],
       city: json['city'] ?? '',
       address: json['address'] ?? '',
-      
-      // Use tryParse to handle missing fields safely
       ratePerHour: double.tryParse(json['rate_per_hour']?.toString() ?? '') ?? 0.0,
       
       markerLatitude: json['marker_latitude']?.toDouble(),
@@ -100,27 +87,21 @@ class Parking {
               ?.map((e) => ParkingEntrance.fromJson(e))
               .toList() ??
           [],
-          
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
-      
-      // Default to 0 if data is missing (Lite mode)
       totalSpots: json['total_spots'] ?? 0,
       occupiedSpots: json['occupied_spots'] ?? 0,
       todayEntries: json['today_entries'] ?? 0,
       todayRevenue: double.tryParse(json['today_revenue']?.toString() ?? '') ?? 0.0,
-      
       tariffConfigJson: json['tariff_config_json'],
-      isDetailsLoaded: !isLite, // Set false if essential data is missing
+      isDetailsLoaded: !isLite, 
     );
   }
-  
-  // Helper to merge full details into a lite object
+
   Parking copyWithDetails(Parking fullDetails) {
     return fullDetails; 
   }
 
-  // ... toJson and getters remain the same ...
   Map<String, dynamic> toJson() {
     return {
       if (id != 0) 'id': id,
@@ -139,7 +120,6 @@ class Parking {
   int get availableSpots => totalSpots - occupiedSpots;
 }
 
-// ... ParkingCoordinate and ParkingEntrance classes remain same ...
 class ParkingCoordinate {
   final double lat;
   final double lng;

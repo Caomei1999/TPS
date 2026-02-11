@@ -1,5 +1,3 @@
-// [FULL REPLACEMENT] parking_session_state.dart
-
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:user_interface/MODELS/tariff_config.dart';

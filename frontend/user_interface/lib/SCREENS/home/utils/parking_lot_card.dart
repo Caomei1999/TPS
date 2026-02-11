@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconly/iconly.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../MODELS/parking.dart';
-import '../MAIN UTILS/location_utils.dart';
+import '../../../MODELS/parking.dart';
+import '../../../MAIN UTILS/location_utils.dart';
 
 class ParkingLotCard extends StatelessWidget {
   final Parking parkingLot;

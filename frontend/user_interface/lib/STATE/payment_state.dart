@@ -6,18 +6,15 @@ class OneOffTicket {
   bool get isActive => expiresAt.isAfter(DateTime.now());
 }
 
-/// Local simulated payment record (no sensitive info stored)
 class PaymentTransaction {
   final String id;
   final DateTime createdAt;
   final double amount;
-  final String currency; // e.g. EUR
-  final String methodType; // card / apple_pay / google_pay
-  final String methodLabel; // e.g. "Card •••• 1111"
-  final String reason; // "Start Session" / "Extra payment"
+  final String currency;
+  final String methodType;
+  final String methodLabel;
+  final String reason;
 
-  /// Previously: "SIMULATED"
-  /// Now: we use it as a display label (e.g., Parking Lot name)
   final String status;
 
   const PaymentTransaction({
@@ -33,18 +30,14 @@ class PaymentTransaction {
 }
 
 class PaymentState {
-  /// Legacy: stores only last 4 digits
   final String? method;
 
-  /// Default method for parking workflow
-  /// 'card' | 'apple_pay' | 'google_pay'
   final String? defaultMethodType;
 
   final OneOffTicket? activeTicket;
   final double? lastCharge;
   final bool preAuthorized;
 
-  /// NEW: simulated payment history
   final List<PaymentTransaction> history;
 
   const PaymentState({
@@ -123,15 +116,11 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     state = state.copyWith(activeTicket: OneOffTicket(expiresAt: expiresAt));
   }
 
-  /// Simulated charge + save local history
-  ///
-  /// NEW: [placeLabel] can be used to show Parking Lot name in Payment History,
-  /// replacing the old hardcoded "SIMULATED" label.
   Future<void> charge(
     double amount, {
     String currency = 'EUR',
     String reason = 'Payment',
-    String? placeLabel, // ✅ NEW
+    String? placeLabel,
   }) async {
     final now = DateTime.now();
 
@@ -147,12 +136,12 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
       methodType: methodType,
       methodLabel: methodLabel,
       reason: reason,
-      status: (placeLabel ?? '').trim(), // ✅ Now shows parking lot name
+      status: (placeLabel ?? '').trim(),
     );
 
     state = state.copyWith(
       lastCharge: amount,
-      history: [tx, ...state.history], // newest first
+      history: [tx, ...state.history],
     );
 
     await Future.delayed(const Duration(milliseconds: 300));

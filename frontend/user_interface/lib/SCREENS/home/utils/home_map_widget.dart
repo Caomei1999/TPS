@@ -36,9 +36,7 @@ class _HomeMapWidgetState extends ConsumerState<HomeMapWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the map style provider to trigger rebuilds
     ref.listen<bool>(mapStyleProvider, (previous, next) {
-      // When style changes, update the map
       if (previous != next && _controller != null) {
         _updateMapStyle();
       }

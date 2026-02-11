@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_interface/SERVICES/auth_service.dart';
+// IMPORT REUSABLE WIDGETS
+import 'package:user_interface/SCREENS/login/utils/custom_text_field.dart';
+import 'package:user_interface/SCREENS/login/utils/custom_auth_button.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -19,6 +22,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   int _currentStep = 0;
   bool _isLoading = false;
+  
+  // Added state for password visibility toggles
+  bool _showNewPassword = false;
+  bool _showConfirmPassword = false;
 
   void _showSnackbar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -67,6 +74,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     if (newPass != confirmPass) {
       _showSnackbar("Passwords do not match!", isError: true);
+      return;
+    }
+
+    RegExp hasUppercase = RegExp(r'[A-Z]');
+    RegExp hasLowercase = RegExp(r'[a-z]');
+    RegExp hasNumber = RegExp(r'\d');
+
+    if (newPass.length < 8 || 
+        !hasUppercase.hasMatch(newPass) || 
+        !hasLowercase.hasMatch(newPass) || 
+        !hasNumber.hasMatch(newPass)) {
+      
+      _showSnackbar(
+        'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.',
+        isError: true
+      );
       return;
     }
 
@@ -135,8 +158,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 decoration: BoxDecoration(
                   color: Colors.black26,
                   borderRadius: BorderRadius.circular(25),
-                  boxShadow: [
-                    const BoxShadow(
+                  boxShadow: const [
+                    BoxShadow(
                       color: Colors.black12,
                       blurRadius: 8,
                       offset: Offset(0, 4),
@@ -146,19 +169,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 child: Column(
                   children: [
                     if (_currentStep == 0) ...[
-                      const Text(
-                        "Enter your email to receive a reset code.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70),
-                      ),
+                      const Text("Enter your email to receive a reset code.",textAlign: TextAlign.center,style: TextStyle(color: Colors.white70)),
                       const SizedBox(height: 20),
-                      _buildTextField(
-                        _emailController,
-                        "Email",
-                        Icons.email_outlined,
-                      ),
+                      CustomTextField(controller: _emailController, label: "Email", icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
                       const SizedBox(height: 30),
-                      _buildButton("Send Code", _handleSendCode),
+                      CustomAuthButton(text: "Send Code", onPressed: _handleSendCode, isLoading: _isLoading),
+                      
                     ] else ...[
                       const Text(
                         "Enter the code sent to your email and your new password.",
@@ -166,33 +182,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         style: TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 20),
-                      _buildTextField(
-                        _emailController,
-                        "Email",
-                        Icons.email_outlined,
-                      ),
+                      CustomTextField(controller: _emailController, label: "Email", icon: Icons.email_outlined, keyboardType: TextInputType.emailAddress),
                       const SizedBox(height: 15),
-                      _buildTextField(
-                        _codeController,
-                        "Code / Token",
-                        Icons.vpn_key,
-                      ),
+                      CustomTextField(controller: _codeController, label: "Code / Token", icon: Icons.vpn_key),
                       const SizedBox(height: 15),
-                      _buildTextField(
-                        _newPasswordController,
-                        "New Password",
-                        Icons.lock_outline,
-                        obscureText: true,
-                      ),
+                      CustomTextField(controller: _newPasswordController, label: "New Password", icon: Icons.lock_outline, isPassword: true, obscureText: !_showNewPassword, onVisibilityToggle: () { setState(() => _showNewPassword = !_showNewPassword); }),
                       const SizedBox(height: 15),
-                      _buildTextField(
-                        _confirmPasswordController,
-                        "Confirm Password",
-                        Icons.lock_outline,
-                        obscureText: true,
-                      ),
+                      CustomTextField(controller: _confirmPasswordController, label: "Confirm Password", icon: Icons.lock_outline, isPassword: true, obscureText: !_showConfirmPassword, onVisibilityToggle: () { setState(() => _showConfirmPassword = !_showConfirmPassword); }),
                       const SizedBox(height: 30),
-                      _buildButton("Confirm Reset", _handleResetPassword),
+                      CustomAuthButton(text: "Confirm Reset", onPressed: _handleResetPassword, isLoading: _isLoading),
                     ],
                   ],
                 ),
@@ -201,60 +199,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
-    bool obscureText = false,
-  }) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      style: const TextStyle(color: Colors.white),
-      cursorColor: Colors.white,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
-        prefixIcon: Icon(icon, color: Colors.white70),
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.1),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: Colors.white),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildButton(String text, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: _isLoading ? null : onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        minimumSize: const Size(double.infinity, 50),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.black,
-              ),
-            )
-          : Text(
-              text,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
     );
   }
 }

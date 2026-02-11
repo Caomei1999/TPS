@@ -31,9 +31,6 @@ class DashboardScreen extends ConsumerWidget {
                 const PageTitle(title: 'Dashboard'),
                 const SizedBox(height: 30),
 
-                // ===========================
-                // Row 1
-                // ===========================
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -133,9 +130,6 @@ class DashboardScreen extends ConsumerWidget {
                   ],
                 ),
 
-                // ===========================
-                // Row 2
-                // ===========================
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -205,7 +199,6 @@ class DashboardScreen extends ConsumerWidget {
                             context,
                             icon: IconlyBold.activity,
                             label: 'My Vehicles',
-                            // ✅ Pixel 5：车更大 + 更靠中间（避免贴底）
                             overlay: const _NeonOverlay(
                               assetPath: 'assets/illustrations/neon_car.png',
                               alignment: Alignment.center,
@@ -283,10 +276,6 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-/// ✅ 霓虹图片覆盖层：按 tile 尺寸比例缩放（Pixel 5 更稳定）
-/// - widthFactor/heightFactor：相对 tile 的占比（0~1）
-/// - alignment：放哪（topCenter/center/bottomCenter...）
-/// - offset：微调位置（像素）
 class _NeonOverlay extends StatelessWidget {
   final String assetPath;
 

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:user_interface/MAIN%20UTILS/page_transition.dart';
+import 'package:user_interface/SCREENS/login/utils/blocked_account_alert.dart';
+import 'package:user_interface/SCREENS/login/utils/custom_auth_button.dart';
 import 'package:user_interface/SCREENS/login/utils/custom_switch.dart';
+import 'package:user_interface/SCREENS/login/utils/custom_text_field.dart'; 
 import 'package:user_interface/SCREENS/root_screen.dart';
 import 'package:user_interface/SERVICES/auth_service.dart';
 import 'package:user_interface/services/AUTHETNTICATION%20HELPERS/secure_storage_service.dart';
@@ -35,14 +38,25 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleSignUp() async {
+    String password = _passwordController.text;
 
-    if (_passwordController.text != _confirmPasswordController.text) {
+    if (password != _confirmPasswordController.text) { // Fixed reference to confirm controller logic
       _showErrorSnackbar('Passwords do not match.');
       return;
     }
 
-    if (_passwordController.text.length < 8) {
-      _showErrorSnackbar('Password must be at least 8 characters long.');
+    RegExp hasUppercase = RegExp(r'[A-Z]');
+    RegExp hasLowercase = RegExp(r'[a-z]');
+    RegExp hasNumber = RegExp(r'\d');
+
+    if (password.length < 8 || 
+        !hasUppercase.hasMatch(password) || 
+        !hasLowercase.hasMatch(password) || 
+        !hasNumber.hasMatch(password)) {
+      
+      _showErrorSnackbar(
+        'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.'
+      );
       return;
     }
 
@@ -55,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
       lastName: _surnameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text,
-      confirmPassword: _confirmPasswordController.text,
+      confirmPassword: password,
     );
 
     setState(() {
@@ -81,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     setState(() {
       _isLoading = true;
-      _isAccountBlocked = false; // Resetta lo stato precedente
+      _isAccountBlocked = false;
     });
 
     try {
@@ -115,14 +129,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
       String errorMessage = e.toString().replaceAll("Exception: ", "");
 
-      // MODIFICA QUI: Controlla se il messaggio riguarda il blocco account
       if (errorMessage.toLowerCase().contains("blocked") || 
           errorMessage.toLowerCase().contains("violations")) {
         setState(() {
           _isAccountBlocked = true;
         });
       } else {
-        // Se è un altro errore (es. password errata), mostra la snackbar
         _showErrorSnackbar(errorMessage);
       }
     }
@@ -166,232 +178,69 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // SWITCH LOGIN / REGISTER
-                CustomSwitch(
-                  leftLabel: "Login",
-                  rightLabel: "Register",
-                  primaryColor: Colors.white,
-                  secondaryColor: Colors.white24,
-                  textColor: Colors.black,
-                  isLoginSelected: isLogin,
+                CustomSwitch(leftLabel: "Login",rightLabel: "Register", primaryColor: Colors.white, secondaryColor: Colors.white24, textColor: Colors.black, isLoginSelected: isLogin,
                   onChanged: (value) {
                     setState(() => isLogin = value);
-                  },
-                ),
-
+                  }),
                 const SizedBox(height: 40),
 
                 if (_isAccountBlocked && isLogin)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.15), // Sfondo rosso trasparente
-                        border: Border.all(color: Colors.redAccent, width: 1.5),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.block, color: Colors.redAccent, size: 30),
-                          const SizedBox(height: 10),
-                          Text(
-                            "Account Blocked",
-                            style: GoogleFonts.poppins(
-                              color: Colors.redAccent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            "You have exceeded violations limit.",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            "For more information contact:\nsupport@tps.com",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.poppins(
-                              color: Colors.white70,
-                              fontSize: 13,
-                              fontStyle: FontStyle.italic
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const BlockedAccountAlert(),
 
-                // FORM BOX
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.black26,
                     borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
+                    boxShadow: const [
                       BoxShadow(
                         color: Colors.black12,
                         blurRadius: 8,
-                        offset: const Offset(0, 4),
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Column(
                     children: [
                       if (!isLogin) ...[
-                        _buildTextField(
-                          controller: _nameController,
-                          label: "First Name",
-                          icon: Icons.person_outline,
-                        ),
+                        CustomTextField(controller: _nameController,label: "First Name",icon: Icons.person_outline,),
                         const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _surnameController,
-                          label: "Last Name",
-                          icon: Icons.person_outline,
-                        ),
+                        CustomTextField(controller: _surnameController,label: "Last Name",icon: Icons.person_outline,),
                         const SizedBox(height: 16),
                       ],
-                      _buildTextField(
-                        controller: _emailController,
-                        label: "Email",
-                        icon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
+                      CustomTextField(controller: _emailController,label: "Email",icon: Icons.email_outlined,keyboardType: TextInputType.emailAddress,),
                       const SizedBox(height: 16),
-                      _buildTextField(
-                        controller: _passwordController,
-                        label: "Password",
-                        icon: Icons.lock_outline,
-                        isPassword: true,
-                        obscureText: !showPassword,
+                      CustomTextField(controller: _passwordController,label: "Password",icon: Icons.lock_outline,isPassword: true,obscureText: !showPassword,
                         onVisibilityToggle: () {
                           setState(() => showPassword = !showPassword);
-                        },
-                      ),
+                        },),
 
                       if (!isLogin) ...[
                         const SizedBox(height: 16),
-                        _buildTextField(
-                          controller: _confirmPasswordController,
-                          label: "Confirm Password",
-                          icon: Icons.lock_outline,
-                          isPassword: true,
-                          obscureText: !showConfirmPassword,
-                          onVisibilityToggle: () {
+                        CustomTextField(controller: _confirmPasswordController,label: "Confirm Password",icon: Icons.lock_outline,isPassword: true,obscureText: !showConfirmPassword,onVisibilityToggle: () {
                             setState(() => showConfirmPassword = !showConfirmPassword);
-                          },
-                        ),
-                      ],
+                          })
+                        ],
                       if (isLogin)
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ForgotPasswordScreen(),
-                                ),
-                              );
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()));
                             },
-                            child: const Text(
-                              "Forgot Password?",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                decoration: TextDecoration.underline,
-                              ),
+                            child: const Text("Forgot Password?", style: TextStyle(color: Colors.white70,decoration: TextDecoration.underline),
                             ),
                           ),
                         ),
 
                       const SizedBox(height: 30),
-                      ElevatedButton(
-                        onPressed: () {
-                          if (isLogin) {
-                            _handleLogin();
-                          } else {
-                            _handleSignUp();
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: Colors.black,
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.black,
-                                ),
-                              )
-                            : Text(
-                                isLogin ? "Log In" : "Sign Up",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                      ),
+                      CustomAuthButton(text: isLogin ? "Log In" : "Sign Up", isLoading: _isLoading, onPressed: () { if (isLogin) { _handleLogin(); } else { _handleSignUp(); } }),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  // TextField builder
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool isPassword = false,
-    bool obscureText = false,
-    VoidCallback? onVisibilityToggle,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      style: const TextStyle(color: Colors.white),
-      cursorColor: Colors.white,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: Colors.white70),
-        prefixIcon: Icon(icon, color: Colors.white70),
-        suffixIcon: isPassword
-            ? IconButton(
-                icon: Icon(
-                  obscureText ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.white70,
-                ),
-                onPressed: onVisibilityToggle,
-              )
-            : null,
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.1),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: Colors.white),
         ),
       ),
     );

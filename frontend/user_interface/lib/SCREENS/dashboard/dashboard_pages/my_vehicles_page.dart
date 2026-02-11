@@ -50,11 +50,14 @@ class _MyVehiclesPageState extends ConsumerState<MyVehiclesPage> {
         vehicleId: vehicle.id,
         isFavorite: !vehicle.isFavorite,
       );
+      ref.invalidate(vehicleListProvider);
+
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Connection error: changes may not be saved.')),
         );
+        ref.invalidate(vehicleListProvider); 
       }
     }
   }

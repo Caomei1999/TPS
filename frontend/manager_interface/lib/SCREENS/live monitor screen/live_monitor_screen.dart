@@ -363,8 +363,6 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.directions_car, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
                   Text(
                     session.vehiclePlate,
                     style: GoogleFonts.poppins(
@@ -377,7 +375,7 @@ class _LiveMonitorScreenState extends State<LiveMonitorScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                session.vehicleName,
+                'Session #${session.id}',
                 style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
               ),
             ],

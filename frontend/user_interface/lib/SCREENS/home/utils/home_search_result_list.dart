@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:user_interface/MODELS/parking.dart';
-import 'package:user_interface/MAIN%20UTILS/parking_lot_card.dart';
+import 'package:user_interface/SCREENS/home/utils/parking_lot_card.dart';
 
 class HomeSearchResultsList extends StatelessWidget {
   final String searchQuery;
