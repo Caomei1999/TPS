@@ -14,17 +14,13 @@ class PlateOcrService {
     }
     final bytes = await image.readAsBytes();
 
-    final uri = Uri.parse('${Api.baseUrl}/plate-ocr/');
+    final uri = Uri.parse('${Api.baseUrl}/vehicles/plate-ocr/');
     final request = http.MultipartRequest('POST', uri);
 
     request.headers['Authorization'] = 'Bearer $token';
 
     request.files.add(
-      http.MultipartFile.fromBytes(
-        'image',
-        bytes,
-        filename: image.name,
-      ),
+      http.MultipartFile.fromBytes('image', bytes, filename: image.name),
     );
 
     final streamed = await request.send();

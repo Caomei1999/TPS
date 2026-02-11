@@ -277,7 +277,6 @@ class PlateOCRView(APIView):
                 {"error": "Missing image file field 'image'."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
         token = os.getenv("PLATE_RECOGNIZER_TOKEN")
         if not token:
             return Response(
