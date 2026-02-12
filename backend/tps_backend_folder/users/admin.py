@@ -7,7 +7,9 @@ from django.contrib import messages
 from parkings.models import City
 from .models import Shift
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-
+from django.contrib.auth.forms import UserChangeForm
+from django.contrib import admin
+from django.utils.safestring import mark_safe
 
 def get_dynamic_city_choices():
     """Get cities from the City model"""
@@ -22,7 +24,7 @@ def get_dynamic_city_choices():
     return sorted([(c, c) for c in cities])
 
 
-class CustomUserChangeForm(forms.ModelForm):
+class CustomUserChangeForm(UserChangeForm):
     allowed_cities = forms.MultipleChoiceField(
         choices=[], 
         required=False,
@@ -32,7 +34,7 @@ class CustomUserChangeForm(forms.ModelForm):
 
     class Meta:
         model = CustomUser
-        fields = ('email', 'first_name', 'last_name', 'role', 'allowed_cities', 'is_active', 'is_staff', 'is_superuser')
+        fields = ('email','password', 'first_name', 'last_name', 'role', 'allowed_cities', 'is_active', 'is_staff', 'is_superuser')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -125,9 +127,9 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     ordering = ('email',)
     
     actions = [reset_user_standing]
-
+    readonly_fields = ('change_password_button',)
     fieldsets = (
-        (None, {'fields': ('email', 'password')}),
+        (None, {'fields': ('email', 'change_password_button')}),
         ('Personal info', {'fields': ('first_name', 'last_name', 'role')}),
         ('Permissions (Managers & Controllers)', {'fields': ('allowed_cities',)}),
         ('Status & Standing', {'fields': ('is_active', 'violations_count', 'is_staff', 'is_superuser')}),
@@ -153,7 +155,7 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
             return self.add_fieldsets
             
         fieldsets = [
-            (None, {'fields': ('email', 'password')}),
+            (None, {'fields': ('email', 'change_password_button')}),
             ('Personal info', {'fields': ('first_name', 'last_name', 'role')}),
         ]
         if obj.role != 'user':
@@ -178,7 +180,70 @@ class CustomUserAdmin(BaseUserAdmin, ModelAdmin):
     def role_badge(self, obj):
         return obj.get_role_display().upper()
     role_badge.short_description = "Role"
+    def change_password_button(self, obj):
+        if not obj.pk:
+            return "-"
+        
+        url = "../password/"
+        wrapper_id = f"pwd_wrapper_{obj.pk}"
+        fake_input_style = (
+            "background-color: #ffffff; "   
+            "border: 1px solid #d1d5db; "   
+            "color: #111827; "              
+            "border-radius: 6px; "          
+            "padding: 0 12px; "             
+            "font-family: inherit; "        
+            "font-size: 14px; "             
+            "line-height: 20px; "
+            "flex-grow: 1; "          
+            "display: flex; "
+            "align-items: center; "         
+            "height: 38px; "                
+            "box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);"
+        )
 
+        btn_style = (
+            "padding: 0 16px; "             
+            "border-radius: 6px; "
+            "font-size: 13px; "
+            "font-weight: 500; "
+            "text-decoration: none; "
+            "display: inline-flex; "
+            "align-items: center; "
+            "justify-content: center; "
+            "height: 38px; "
+            "white-space: nowrap; " 
+            "cursor: pointer;"
+        )
+
+        html_content = f"""
+        <div id="{wrapper_id}" style="display: flex; width: 100%; align-items: center; gap: 12px; position: relative; z-index: 1;">
+            <div style="{fake_input_style}">••••••••••••••••</div>
+            <a href="{url}" class="bg-primary-600 hover:bg-primary-700 text-white" style="{btn_style}">
+               Change Password
+            </a>
+        </div>
+        <script>
+            (function() {{
+                var el = document.getElementById('{wrapper_id}');
+                if (el && el.parentElement) {{
+                    var parent = el.parentElement;
+                    parent.style.backgroundColor = 'transparent';
+                    parent.style.border = 'none';
+                    parent.style.boxShadow = 'none';
+                    parent.style.padding = '0';
+                    parent.style.width = '100%'; 
+                    
+                    parent.classList.remove('border', 'bg-gray-50', 'p-2', 'rounded-md', 'w-full');
+                }}
+            }})();
+        </script>
+        """
+        
+        return mark_safe(html_content)
+    
+    change_password_button.short_description = "Password"
+    change_password_button.allow_tags = True
 
 @admin.register(Shift)
 class ShiftAdmin(ModelAdmin):
