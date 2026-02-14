@@ -22,7 +22,7 @@ ALLOWED_HOSTS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://tps-production-c025.up.railway.app',
+    'https://tps-production-be39.up.railway.app',
 ]
 
 INSTALLED_APPS = [
